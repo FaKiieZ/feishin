@@ -180,20 +180,20 @@ This means you need both valid SSO cookies AND valid server credentials for Feis
 1. **Authenticate with your SSO provider**: Open your server URL in a web browser and complete the OAuth/SSO authentication flow (e.g., sign in with Google through Cloudflare Zero Trust). This establishes the necessary authentication cookies in your browser.
 
 2. **Enable cookie-based authentication in Feishin**: When adding or editing a server in Feishin:
-   - Check the **"Enable cookie-based authentication"** checkbox
-   - This tells Feishin to include your SSO authentication cookies with all requests to bypass the proxy layer
+    - Check the **"Enable cookie-based authentication"** checkbox
+    - This tells Feishin to include your SSO authentication cookies with all requests to bypass the proxy layer
 
 3. **Use the authentication button**: When cookie-based authentication is enabled, an **"Authenticate in Browser"** button appears:
-   - Click this button to open your server URL in a popup window (desktop app) or new tab (web version)
-   - Complete the SSO authentication flow if prompted
-   - The authentication cookies will be shared between the popup and Feishin
-   - Close the popup/tab once authentication is complete
+    - Click this button to open your server URL in a popup window (desktop app) or new tab (web version)
+    - Complete the SSO authentication flow if prompted
+    - The authentication cookies will be shared between the popup and Feishin
+    - Close the popup/tab once authentication is complete
 
 4. **Enter your server credentials**: Fill in the remaining server details:
-   - **Server name**: A friendly name for your server
-   - **Server URL**: The full URL to your music server (e.g., `https://music.example.com`)
-   - **Username**: Your music server username (not your SSO username)
-   - **Password**: Your music server password (not your SSO password)
+    - **Server name**: A friendly name for your server
+    - **Server URL**: The full URL to your music server (e.g., `https://music.example.com`)
+    - **Username**: Your music server username (not your SSO username)
+    - **Password**: Your music server password (not your SSO password)
 
 #### Important Notes
 
