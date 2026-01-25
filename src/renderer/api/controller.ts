@@ -81,6 +81,7 @@ export interface GeneralController extends Omit<Required<ControllerEndpoint>, 'a
         url: string,
         body: { legacy?: boolean; password: string; username: string },
         type: ServerType,
+        useCookieAuth?: boolean,
     ) => Promise<AuthenticationResponse>;
 }
 
@@ -99,8 +100,8 @@ export const controller: GeneralController = {
             server.type,
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
-    authenticate(url, body, type) {
-        return apiController('authenticate', type)(url, body);
+    authenticate(url, body, type, useCookieAuth) {
+        return apiController('authenticate', type)(url, body, useCookieAuth);
     },
     createFavorite(args) {
         const server = getServerById(args.apiClientProps.serverId);

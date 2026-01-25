@@ -71,25 +71,33 @@ export const JellyfinController: InternalControllerEndpoint = {
                 },
             });
 
-            if (res.status !== 204) {
+            if (!res?.status || res.status !== 204) {
                 throw new Error('Failed to add to playlist');
             }
         }
 
         return null;
     },
-    authenticate: async (url, body) => {
+    authenticate: async (url, body, useCookieAuth) => {
         const cleanServerUrl = url.replace(/\/$/, '');
 
-        const res = await jfApiClient({ server: null, url: cleanServerUrl }).authenticate({
+        const res = await jfApiClient({
+            server: null,
+            url: cleanServerUrl,
+            useCookieAuth,
+        }).authenticate({
             body: {
                 Pw: body.password,
                 Username: body.username,
             },
         });
 
-        if (res.status !== 200) {
-            throw new Error('Failed to authenticate');
+        if (!res) {
+            throw new Error('No response received from server');
+        }
+
+        if (!res.status || res.status !== 200) {
+            throw new Error(`Authentication failed with status ${res.status || 'unknown'}`);
         }
 
         return {
@@ -154,7 +162,7 @@ export const JellyfinController: InternalControllerEndpoint = {
             },
         });
 
-        if (res.status !== 200) {
+        if (!res?.status || res.status !== 200) {
             throw new Error('Failed to create playlist');
         }
 
@@ -239,7 +247,12 @@ export const JellyfinController: InternalControllerEndpoint = {
             }),
         ]);
 
-        if (res.status !== 200 || similarArtistsRes.status !== 200) {
+        if (
+            !res?.status ||
+            res.status !== 200 ||
+            !similarArtistsRes?.status ||
+            similarArtistsRes.status !== 200
+        ) {
             throw new Error('Failed to get album artist detail');
         }
 
@@ -312,7 +325,7 @@ export const JellyfinController: InternalControllerEndpoint = {
             },
         });
 
-        if (res.status !== 200 || songsRes.status !== 200) {
+        if (!res?.status || res.status !== 200 || !songsRes?.status || songsRes.status !== 200) {
             throw new Error('Failed to get album detail');
         }
 
@@ -379,7 +392,7 @@ export const JellyfinController: InternalControllerEndpoint = {
             },
         });
 
-        if (res.status !== 200) {
+        if (!res?.status || res.status !== 200) {
             throw new Error('Failed to get album list');
         }
 
@@ -444,7 +457,7 @@ export const JellyfinController: InternalControllerEndpoint = {
             },
         });
 
-        if (res.status !== 200) {
+        if (!res?.status || res.status !== 200) {
             throw new Error('Failed to get artist radio songs');
         }
 
@@ -944,7 +957,7 @@ export const JellyfinController: InternalControllerEndpoint = {
 
         const res = await jfApiClient(apiClientProps).getServerInfo();
 
-        if (res.status !== 200) {
+        if (!res?.status || res.status !== 200) {
             throw new Error('Failed to get server info');
         }
 
@@ -1318,7 +1331,7 @@ export const JellyfinController: InternalControllerEndpoint = {
             },
         });
 
-        if (res.status !== 200) {
+        if (!res?.status || res.status !== 200) {
             throw new Error('Failed to get user info');
         }
 

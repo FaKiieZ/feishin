@@ -89,8 +89,13 @@ function ServerSelector() {
             {Object.keys(serverList).map((serverId) => {
                 const server = serverList[serverId];
                 const isNavidromeExpired =
-                    server.type === ServerType.NAVIDROME && !server.ndCredential;
-                const isJellyfinExpired = server.type === ServerType.JELLYFIN && !server.credential;
+                    server.type === ServerType.NAVIDROME &&
+                    !server.useCookieAuth &&
+                    !server.ndCredential;
+                const isJellyfinExpired =
+                    server.type === ServerType.JELLYFIN &&
+                    !server.useCookieAuth &&
+                    !server.credential;
                 const isSessionExpired = isNavidromeExpired || isJellyfinExpired;
 
                 const logo =

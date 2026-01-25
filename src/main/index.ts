@@ -297,12 +297,44 @@ async function createWindow(first = true): Promise<void> {
             nodeIntegration: true,
             preload: join(__dirname, '../preload/index.js'),
             sandbox: false,
-            webSecurity: !store.get('ignore_cors'),
+            webSecurity: !store.get('ignore_cors') && !isDevelopment,
         },
         width: 1440,
         ...(nativeFrame && isLinux() && nativeFrameConfig.linux),
         ...(nativeFrame && isMacOS() && nativeFrameConfig.macOS),
         ...(nativeFrame && isWindows() && nativeFrameConfig.windows),
+    });
+
+    // Handle window.open calls for cookie authentication
+    mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+        // For authentication URLs, open in a new BrowserWindow within Electron
+        // This allows cookie sharing between the auth window and main app
+        const authWindow = new BrowserWindow({
+            autoHideMenuBar: true,
+            height: 700,
+            parent: mainWindow,
+            webPreferences: {
+                contextIsolation: true,
+                nodeIntegration: false,
+                webSecurity: !store.get('ignore_cors') && !isDevelopment,
+            },
+            width: 900,
+        });
+
+        authWindow.loadURL(url);
+
+        // Close auth window when navigation to main domain happens (login success)
+        authWindow.webContents.on('did-navigate', (_, navigationUrl) => {
+            const mainDomain = new URL(url).hostname;
+            const navDomain = new URL(navigationUrl).hostname;
+
+            // If navigated back to the main domain (not auth provider), close window
+            if (navDomain === mainDomain && !navigationUrl.includes('/auth/')) {
+                setTimeout(() => authWindow.close(), 2000); // Small delay to show success
+            }
+        });
+
+        return { action: 'deny' }; // Prevent default window.open behavior
     });
 
     // From https://github.com/electron/electron/issues/526#issuecomment-1663959513
@@ -384,6 +416,39 @@ async function createWindow(first = true): Promise<void> {
 
     ipcMain.on('download-url', (_event, url: string) => {
         mainWindow?.webContents.downloadURL(url);
+    });
+
+    // Add specific handler for authentication URLs
+    ipcMain.on('open-auth-window', (_event, url: string) => {
+        const authWindow = new BrowserWindow({
+            autoHideMenuBar: true,
+            height: 700,
+            parent: mainWindow,
+            webPreferences: {
+                contextIsolation: true,
+                nodeIntegration: false,
+                webSecurity: !store.get('ignore_cors') && !isDevelopment,
+            },
+            width: 900,
+        });
+
+        authWindow.loadURL(url);
+
+        // Close auth window when navigation to main domain happens (login success)
+        authWindow.webContents.on('did-navigate', (_, navigationUrl) => {
+            try {
+                const urlObj = new URL(url);
+                const mainDomain = urlObj.hostname;
+                const navDomain = new URL(navigationUrl).hostname;
+
+                // If navigated back to the main domain (not auth provider), close window
+                if (navDomain === mainDomain && !navigationUrl.includes('/auth/')) {
+                    setTimeout(() => authWindow.close(), 2000);
+                }
+            } catch (e) {
+                // Ignore URL parsing errors
+            }
+        });
     });
 
     const globalMediaKeysEnabled = store.get('global_media_hotkeys', true) as boolean;

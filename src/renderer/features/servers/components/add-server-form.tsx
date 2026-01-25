@@ -13,8 +13,10 @@ import JellyfinIcon from '/@/renderer/features/servers/assets/jellyfin.png';
 import NavidromeIcon from '/@/renderer/features/servers/assets/navidrome.png';
 import SubsonicIcon from '/@/renderer/features/servers/assets/opensubsonic.png';
 import { useAuthStoreActions } from '/@/renderer/store';
+import { Button } from '/@/shared/components/button/button';
 import { Checkbox } from '/@/shared/components/checkbox/checkbox';
 import { Group } from '/@/shared/components/group/group';
+import { Icon } from '/@/shared/components/icon/icon';
 import { ModalButton } from '/@/shared/components/modal/model-shared';
 import { Paper } from '/@/shared/components/paper/paper';
 import { PasswordInput } from '/@/shared/components/password-input/password-input';
@@ -120,7 +122,8 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
         },
     });
 
-    const isSubmitDisabled = !form.values.name || !form.values.url || !form.values.username;
+    const isSubmitDisabled =
+        !form.values.name || !form.values.url || !form.values.username || !form.values.password;
 
     const fillServerDetails = (server: DiscoveredServerItem) => {
         form.setValues({ ...server });
@@ -141,10 +144,13 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
                 values.url,
                 {
                     legacy: values.legacyAuth,
-                    password: values.password,
-                    username: values.username,
+                    password:
+                        values.useCookieAuth && !values.password ? 'cookie-auth' : values.password,
+                    username:
+                        values.useCookieAuth && !values.username ? 'cookie-auth' : values.username,
                 },
                 values.type as ServerType,
+                values.useCookieAuth,
             );
 
             if (!data) {
@@ -161,7 +167,7 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
                 type: values.type as ServerType,
                 url: values.url.replace(/\/$/, ''),
                 userId: data.userId,
-                username: data.username,
+                username: data.username || values.username || 'cookie-auth-user',
             };
 
             if (values.preferInstantMix !== undefined) {
@@ -293,7 +299,7 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
                             context: 'username',
                             postProcess: 'titleCase',
                         })}
-                        required
+                        required={true}
                         {...form.getInputProps('username')}
                     />
                     <PasswordInput
@@ -301,6 +307,7 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
                             context: 'password',
                             postProcess: 'titleCase',
                         })}
+                        required={true}
                         {...form.getInputProps('password')}
                     />
                     <Checkbox
@@ -316,6 +323,25 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
                             type: 'checkbox',
                         })}
                     />
+                    {form.values.useCookieAuth && form.values.url && (
+                        <Button
+                            leftSection={<Icon icon="externalLink" />}
+                            onClick={() => {
+                                if (isElectron() && window.api?.browser?.openAuthWindow) {
+                                    window.api.browser.openAuthWindow(form.values.url);
+                                } else {
+                                    // Fallback for non-Electron or if API not available
+                                    window.open(form.values.url, '_blank');
+                                }
+                            }}
+                            variant="light"
+                        >
+                            {t('form.addServer.authenticateInBrowser', {
+                                defaultValue: 'Authenticate in Browser',
+                                postProcess: 'titleCase',
+                            })}
+                        </Button>
+                    )}
                     {localSettings && form.values.type === ServerType.NAVIDROME && (
                         <Checkbox
                             label={t('form.addServer.input', {

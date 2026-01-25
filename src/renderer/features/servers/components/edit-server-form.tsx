@@ -7,6 +7,7 @@ import i18n from '/@/i18n/i18n';
 import { api } from '/@/renderer/api';
 import { queryClient } from '/@/renderer/lib/react-query';
 import { getServerById, useAuthStoreActions } from '/@/renderer/store';
+import { Button } from '/@/shared/components/button/button';
 import { Checkbox } from '/@/shared/components/checkbox/checkbox';
 import { Group } from '/@/shared/components/group/group';
 import { Icon } from '/@/shared/components/icon/icon';
@@ -115,10 +116,17 @@ export const EditServerForm = ({ isUpdate, onCancel, password, server }: EditSer
                     values.url,
                     {
                         legacy: values.legacyAuth,
-                        password: values.password,
-                        username: values.username,
+                        password:
+                            values.useCookieAuth && !values.password
+                                ? 'cookie-auth'
+                                : values.password,
+                        username:
+                            values.useCookieAuth && !values.username
+                                ? 'cookie-auth'
+                                : values.username,
                     },
                     values.type,
+                    values.useCookieAuth,
                 );
 
                 if (!data) {
@@ -135,7 +143,7 @@ export const EditServerForm = ({ isUpdate, onCancel, password, server }: EditSer
                     type: values.type,
                     url: values.url,
                     userId: data.userId,
-                    username: data.username,
+                    username: data.username || values.username || 'cookie-auth-user',
                 };
 
                 if (data.ndCredential !== undefined) {
@@ -259,7 +267,7 @@ export const EditServerForm = ({ isUpdate, onCancel, password, server }: EditSer
                         context: 'username',
                         postProcess: 'titleCase',
                     })}
-                    required
+                    required={true}
                     rightSection={form.isDirty('username') && <ModifiedFieldIndicator />}
                     {...form.getInputProps('username')}
                 />
@@ -269,6 +277,7 @@ export const EditServerForm = ({ isUpdate, onCancel, password, server }: EditSer
                         context: 'password',
                         postProcess: 'titleCase',
                     })}
+                    required={true}
                     {...form.getInputProps('password')}
                 />
                 <Group gap="xs">
@@ -287,6 +296,25 @@ export const EditServerForm = ({ isUpdate, onCancel, password, server }: EditSer
                     />
                     {form.isDirty('useCookieAuth') && <ModifiedFieldIndicator />}
                 </Group>
+                {form.values.useCookieAuth && form.values.url && (
+                    <Button
+                        leftSection={<Icon icon="externalLink" />}
+                        onClick={() => {
+                            if (isElectron() && window.api?.browser?.openAuthWindow) {
+                                window.api.browser.openAuthWindow(form.values.url);
+                            } else {
+                                // Fallback for non-Electron or if API not available
+                                window.open(form.values.url, '_blank');
+                            }
+                        }}
+                        variant="light"
+                    >
+                        {t('form.addServer.authenticateInBrowser', {
+                            defaultValue: 'Authenticate in Browser',
+                            postProcess: 'titleCase',
+                        })}
+                    </Button>
+                )}
                 {localSettings && isNavidrome && (
                     <Checkbox
                         label={t('form.addServer.input', {

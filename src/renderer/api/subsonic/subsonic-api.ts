@@ -340,16 +340,16 @@ axiosClient.defaults.paramsSerializer = (params) => {
 axiosClient.interceptors.response.use(
     (response) => {
         const data = response.data;
-        if (data['subsonic-response'].status !== 'ok') {
+        if (data?.['subsonic-response']?.status !== 'ok') {
             // Suppress code related to non-linked lastfm or spotify from Navidrome
-            if (data['subsonic-response'].error.code !== 0) {
+            if (data?.['subsonic-response']?.error?.code !== 0) {
                 toast.error({
-                    message: data['subsonic-response'].error.message,
+                    message: data?.['subsonic-response']?.error?.message,
                     title: i18n.t('error.genericError', { postProcess: 'sentenceCase' }) as string,
                 });
 
                 // Since we do status === 200, override this value with the error code
-                response.status = data['subsonic-response'].error.code;
+                response.status = data?.['subsonic-response']?.error?.code;
             }
         }
 
@@ -377,7 +377,9 @@ const silentlyTransformResponse = (data: any) => {
     const status = jsonBody ? jsonBody['subsonic-response']?.status : undefined;
 
     if (status && status !== 'ok') {
-        jsonBody['subsonic-response'].error.code = 0;
+        if (jsonBody?.['subsonic-response']?.error) {
+            jsonBody['subsonic-response'].error.code = 0;
+        }
     }
 
     return jsonBody;
@@ -388,8 +390,9 @@ export const ssApiClient = (args: {
     signal?: AbortSignal;
     silent?: boolean;
     url?: string;
+    useCookieAuth?: boolean;
 }) => {
-    const { server, signal, silent, url } = args;
+    const { server, signal, silent, url, useCookieAuth } = args;
 
     return initClient(contract, {
         api: async ({ headers, method, path }) => {
@@ -397,10 +400,14 @@ export const ssApiClient = (args: {
             const authParams: Record<string, any> = {};
 
             const { params, path: api } = parsePath(path);
+            const shouldUseCookieAuth = server?.useCookieAuth || useCookieAuth;
 
             if (server) {
                 const serverUrl = getServerUrl(server);
                 baseUrl = serverUrl ? `${serverUrl}/rest` : undefined;
+
+                // Always send Navidrome credentials (username, password/token)
+                // Cookie auth just adds Zero Trust cookies on top
                 const token = server.credential;
                 const params = token.split(/&?\w=/gm);
 
@@ -421,7 +428,7 @@ export const ssApiClient = (args: {
                 // In cases where we have a fallback, don't notify the error
                 transformResponse: silent ? silentlyTransformResponse : undefined,
                 url: `${baseUrl}/${api}`,
-                withCredentials: server?.useCookieAuth || false,
+                withCredentials: shouldUseCookieAuth,
             };
 
             const data = {
@@ -448,7 +455,7 @@ export const ssApiClient = (args: {
                     );
 
                 return {
-                    body: result.data['subsonic-response'],
+                    body: result.data?.['subsonic-response'] || {},
                     headers: result.headers as any,
                     status: result.status,
                 };
@@ -468,7 +475,7 @@ export const ssApiClient = (args: {
                     return {
                         body: response?.data,
                         headers: response?.headers as any,
-                        status: response?.status,
+                        status: response?.status || 0,
                     };
                 }
                 throw e;

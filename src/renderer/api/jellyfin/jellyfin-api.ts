@@ -407,8 +407,9 @@ export const jfApiClient = (args: {
     server: null | ServerListItemWithCredential;
     signal?: AbortSignal;
     url?: string;
+    useCookieAuth?: boolean;
 }) => {
-    const { server, signal, url } = args;
+    const { server, signal, url, useCookieAuth } = args;
 
     return initClient(contract, {
         api: async ({ body, headers, method, path }) => {
@@ -438,7 +439,7 @@ export const jfApiClient = (args: {
                     params,
                     signal,
                     url: `${baseUrl}/${api}`,
-                    withCredentials: server?.useCookieAuth || false,
+                    withCredentials: server?.useCookieAuth || useCookieAuth || false,
                 });
                 return {
                     body: result.data,
@@ -460,7 +461,7 @@ export const jfApiClient = (args: {
                     return {
                         body: response?.data,
                         headers: response?.headers as any,
-                        status: response?.status,
+                        status: response?.status || 0,
                     };
                 }
                 throw e;
