@@ -160,6 +160,22 @@ Feishin supports any music server that implements a [Navidrome](https://www.navi
     - [Qm-Music](https://github.com/chenqimiao/qm-music)
     - More (?)
 
+### How do I use Feishin with a server behind Cloudflare Zero Trust or other SSO/proxy authentication?
+
+If your server is protected by Cloudflare Zero Trust (formerly Cloudflare Access), or any other SSO/proxy authentication that uses cookies, follow these steps:
+
+1. **Authenticate in your browser first**: Open your server URL in a web browser and complete the OAuth/SSO authentication flow (e.g., sign in with Google).
+
+2. **Enable cookie-based authentication in Feishin**: When adding or editing a server in Feishin, check the "Enable cookie-based authentication" option. This tells Feishin to include authentication cookies with its requests.
+
+3. **Add the server**: Fill in the server details as usual (server name, URL, username, and password for your music server).
+
+**Important notes:**
+- You must authenticate in your browser first before adding the server to Feishin
+- The cookie-based authentication checkbox is available for all server types (Navidrome, Jellyfin, and Subsonic-compatible servers)
+- If your authentication session expires, you may need to re-authenticate in your browser
+- This feature is primarily designed for Cloudflare Zero Trust, but should work with other cookie-based authentication proxies as well
+
 ### I have the issue "The SUID sandbox helper binary was found, but is not configured correctly" on Linux
 
 This happens when you have user (unprivileged) namespaces disabled (`sysctl kernel.unprivileged_userns_clone` returns 0). You can fix this by either enabling unprivileged namespaces, or by making the `chrome-sandbox` Setuid.
