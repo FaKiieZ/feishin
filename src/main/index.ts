@@ -104,10 +104,6 @@ if (process.env.NODE_ENV === 'production') {
 
 const isDevelopment = process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true';
 
-// Note: Web security is maintained in development mode for security reasons.
-// CORS issues in development should be handled through the 'ignore_cors' setting
-// rather than blanket disabling web security, which prevents XSS and CSRF attacks.
-
 if (isDevelopment) {
     import('electron-debug').then((electronDebug) => {
         electronDebug.default();
@@ -152,6 +148,9 @@ const getAssetPath = (...paths: string[]): string => {
 };
 
 const createAuthWindow = (url: string) => {
+    // Note: Web security is maintained in development mode for security reasons.
+    // CORS issues in development should be handled through the 'ignore_cors' setting
+    // rather than blanket disabling web security, which prevents XSS and CSRF attacks.
     const authWindow = new BrowserWindow({
         autoHideMenuBar: true,
         height: 700,
