@@ -299,7 +299,7 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
                             context: 'username',
                             postProcess: 'titleCase',
                         })}
-                        required={true}
+                        required
                         {...form.getInputProps('username')}
                     />
                     <PasswordInput
@@ -307,7 +307,7 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
                             context: 'password',
                             postProcess: 'titleCase',
                         })}
-                        required={true}
+                        required
                         {...form.getInputProps('password')}
                     />
                     <Checkbox

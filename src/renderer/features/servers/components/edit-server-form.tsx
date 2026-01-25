@@ -267,7 +267,7 @@ export const EditServerForm = ({ isUpdate, onCancel, password, server }: EditSer
                         context: 'username',
                         postProcess: 'titleCase',
                     })}
-                    required={true}
+                    required
                     rightSection={form.isDirty('username') && <ModifiedFieldIndicator />}
                     {...form.getInputProps('username')}
                 />
@@ -277,7 +277,7 @@ export const EditServerForm = ({ isUpdate, onCancel, password, server }: EditSer
                         context: 'password',
                         postProcess: 'titleCase',
                     })}
-                    required={true}
+                    required
                     {...form.getInputProps('password')}
                 />
                 <Group gap="xs">
