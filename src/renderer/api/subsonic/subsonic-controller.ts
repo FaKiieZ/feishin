@@ -1197,9 +1197,7 @@ export const SubsonicController: InternalControllerEndpoint = {
     getServerInfo: async (args) => {
         const { apiClientProps } = args;
 
-        const ping = await ssApiClient({
-            server: apiClientProps.server,
-        }).ping();
+        const ping = await ssApiClient(apiClientProps).ping();
 
         if (ping.status !== 200) {
             throw new Error('Failed to ping server');
@@ -1211,9 +1209,7 @@ export const SubsonicController: InternalControllerEndpoint = {
             return { features, version: ping.body.version };
         }
 
-        const res = await ssApiClient({
-            server: apiClientProps.server,
-        }).getServerInfo();
+        const res = await ssApiClient(apiClientProps).getServerInfo();
 
         if (res.status !== 200) {
             throw new Error('Failed to get server extensions');
