@@ -60,6 +60,7 @@ export const EditServerForm = ({ isUpdate, onCancel, password, server }: EditSer
             savePassword: server.savePassword,
             type: server?.type,
             url: server?.url,
+            useCookieAuth: server?.useCookieAuth || false,
             username: server?.username,
         },
     });
@@ -159,6 +160,10 @@ export const EditServerForm = ({ isUpdate, onCancel, password, server }: EditSer
 
             if (values.preferRemoteUrl !== undefined) {
                 serverItem.preferRemoteUrl = values.preferRemoteUrl;
+            }
+
+            if (values.useCookieAuth !== undefined) {
+                serverItem.useCookieAuth = values.useCookieAuth;
             }
 
             updateServer(server.id, serverItem);
@@ -266,6 +271,22 @@ export const EditServerForm = ({ isUpdate, onCancel, password, server }: EditSer
                     })}
                     {...form.getInputProps('password')}
                 />
+                <Group gap="xs">
+                    <Checkbox
+                        description={t('form.addServer.input', {
+                            context: 'useCookieAuthDescription',
+                            postProcess: 'sentenceCase',
+                        })}
+                        label={t('form.addServer.input', {
+                            context: 'useCookieAuth',
+                            postProcess: 'titleCase',
+                        })}
+                        {...form.getInputProps('useCookieAuth', {
+                            type: 'checkbox',
+                        })}
+                    />
+                    {form.isDirty('useCookieAuth') && <ModifiedFieldIndicator />}
+                </Group>
                 {localSettings && isNavidrome && (
                     <Checkbox
                         label={t('form.addServer.input', {

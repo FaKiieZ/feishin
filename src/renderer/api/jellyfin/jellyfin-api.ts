@@ -438,6 +438,7 @@ export const jfApiClient = (args: {
                     params,
                     signal,
                     url: `${baseUrl}/${api}`,
+                    withCredentials: server?.useCookieAuth || false,
                 });
                 return {
                     body: result.data,

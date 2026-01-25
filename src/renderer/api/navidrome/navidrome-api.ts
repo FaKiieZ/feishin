@@ -432,6 +432,7 @@ export const ndApiClient = (args: {
                     params,
                     signal,
                     url: `${baseUrl}/${api}`,
+                    withCredentials: server?.useCookieAuth || false,
                 });
                 return {
                     body: { data: result.data, headers: result.headers },

@@ -421,6 +421,7 @@ export const ssApiClient = (args: {
                 // In cases where we have a fallback, don't notify the error
                 transformResponse: silent ? silentlyTransformResponse : undefined,
                 url: `${baseUrl}/${api}`,
+                withCredentials: server?.useCookieAuth || false,
             };
 
             const data = {

@@ -115,6 +115,7 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
                     ? localSettings.env.SERVER_TYPE
                     : toServerType(window.SERVER_TYPE)) ?? ServerType.NAVIDROME,
             url: (localSettings ? localSettings.env.SERVER_URL : window.SERVER_URL) ?? 'https://',
+            useCookieAuth: false,
             username: '',
         },
     });
@@ -177,6 +178,10 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
 
             if (values.preferRemoteUrl !== undefined) {
                 serverItem.preferRemoteUrl = values.preferRemoteUrl;
+            }
+
+            if (values.useCookieAuth !== undefined) {
+                serverItem.useCookieAuth = values.useCookieAuth;
             }
 
             if (data.ndCredential !== undefined) {
@@ -297,6 +302,19 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
                             postProcess: 'titleCase',
                         })}
                         {...form.getInputProps('password')}
+                    />
+                    <Checkbox
+                        description={t('form.addServer.input', {
+                            context: 'useCookieAuthDescription',
+                            postProcess: 'sentenceCase',
+                        })}
+                        label={t('form.addServer.input', {
+                            context: 'useCookieAuth',
+                            postProcess: 'titleCase',
+                        })}
+                        {...form.getInputProps('useCookieAuth', {
+                            type: 'checkbox',
+                        })}
                     />
                     {localSettings && form.values.type === ServerType.NAVIDROME && (
                         <Checkbox
