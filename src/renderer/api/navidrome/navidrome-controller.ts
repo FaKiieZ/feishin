@@ -895,7 +895,7 @@ export const NavidromeController: InternalControllerEndpoint = {
             },
         });
 
-        if (existingSongsRes.status !== 200) {
+        if (!existingSongsRes?.status || existingSongsRes.status !== 200) {
             throw new Error('Failed to fetch existing playlist songs');
         }
 
@@ -915,7 +915,7 @@ export const NavidromeController: InternalControllerEndpoint = {
             },
         });
 
-        if (playlistDetailRes.status !== 200) {
+        if (!playlistDetailRes?.status || playlistDetailRes.status !== 200) {
             throw new Error('Failed to get playlist detail');
         }
 
@@ -949,7 +949,7 @@ export const NavidromeController: InternalControllerEndpoint = {
                     },
                 });
 
-                if (removeRes.status !== 200) {
+                if (!removeRes?.status || removeRes.status !== 200) {
                     throw new Error('Failed to remove songs from playlist');
                 }
             }
@@ -966,7 +966,7 @@ export const NavidromeController: InternalControllerEndpoint = {
                 },
             });
 
-            if (addRes.status !== 200) {
+            if (!addRes?.status || addRes.status !== 200) {
                 throw new Error('Failed to add songs to playlist');
             }
         }
