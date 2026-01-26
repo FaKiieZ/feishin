@@ -163,42 +163,7 @@ const createAuthWindow = (url: string) => {
         width: 900,
     });
 
-    let authTimeout: NodeJS.Timeout;
-
-    // Cleanup function to clear timeout and remove all event listeners
-    const cleanup = () => {
-        if (authTimeout) clearTimeout(authTimeout);
-        // Event listeners are automatically cleaned up when window is destroyed,
-        // but we can explicitly remove them if the window still exists
-        if (!authWindow.isDestroyed()) {
-            authWindow.webContents.removeAllListeners('did-fail-load');
-            authWindow.webContents.removeAllListeners('did-navigate');
-            authWindow.webContents.removeAllListeners('did-finish-load');
-        }
-    };
-
     authWindow.loadURL(url);
-
-    // Set a timeout to close the auth window if no clear authentication happens
-    // This prevents windows from staying open indefinitely when servers are down
-    // Increased timeout for OAuth flows which can take longer
-    authTimeout = setTimeout(() => {
-        if (!authWindow.isDestroyed()) {
-            console.log('Auth window timeout - closing window and sending auth-failed');
-
-            // If timeout occurs, consider it a failure
-            getMainWindow()?.webContents.send('auth-failed', {
-                errorDescription: 'Authentication window timed out',
-                reason: 'timeout',
-            });
-
-            cleanup();
-            authWindow.close();
-        }
-    }, 30000); // Increased to 30 seconds to accommodate OAuth flows
-
-    // Clear timeout and cleanup if window is closed manually
-    authWindow.on('closed', cleanup);
 
     // Handle load failures (server unreachable, network issues, etc.)
     authWindow.webContents.on(
@@ -209,9 +174,6 @@ const createAuthWindow = (url: string) => {
                 errorDescription,
                 url: validatedURL,
             });
-
-            // Clear the timeout since we're handling the failure
-            cleanup();
 
             // Common network error codes that indicate server is unreachable
             const networkErrorCodes = [
@@ -282,9 +244,6 @@ const createAuthWindow = (url: string) => {
                 // Notify renderer that auth was successful
                 getMainWindow()?.webContents.send('auth-success');
 
-                // Clear the timeout since we detected successful auth
-                cleanup();
-
                 // Use a shorter delay to allow the success page to briefly display
                 setTimeout(() => {
                     if (!authWindow.isDestroyed()) {
@@ -341,13 +300,8 @@ const createAuthWindow = (url: string) => {
             `,
                 )
                 .then((pageInfo: any) => {
-                    console.log('Page analysis:', pageInfo);
-
                     // If the page has errors, treat as auth failure
                     if (pageInfo.hasError) {
-                        console.log('Detected server error page, sending auth-failed');
-                        cleanup();
-
                         getMainWindow()?.webContents.send('auth-failed', {
                             errorDescription: `Server error detected: ${pageInfo.title}`,
                             reason: 'server_error',
@@ -363,9 +317,6 @@ const createAuthWindow = (url: string) => {
 
                     // Check if we're on a success page or dashboard after auth
                     if (currentDomain === mainDomain && pageInfo.hasAuth) {
-                        // Clear the timeout since we detected successful auth
-                        cleanup();
-
                         // Notify renderer that auth was successful
                         getMainWindow()?.webContents.send('auth-success');
 
@@ -375,10 +326,6 @@ const createAuthWindow = (url: string) => {
                             }
                         }, 300);
                     }
-                })
-                .catch((error) => {
-                    console.error('Failed to analyze page content:', error);
-                    // If we can't analyze the page, fall back to original URL-based logic
                 });
         } catch (e) {
             console.error('Error in did-finish-load handler:', e);
