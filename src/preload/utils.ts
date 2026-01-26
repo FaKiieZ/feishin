@@ -23,6 +23,10 @@ const mainMessageListener = (
     ipcRenderer.on('toast-from-main', cb);
 };
 
+const authSuccessListener = (cb: (event: IpcRendererEvent) => void) => {
+    ipcRenderer.on('auth-success', cb);
+};
+
 const logger = (
     cb: (
         event: IpcRendererEvent,
@@ -58,6 +62,7 @@ const forceGarbageCollection = (): boolean => {
 };
 
 export const utils = {
+    authSuccessListener,
     disableAutoUpdates,
     download,
     forceGarbageCollection,

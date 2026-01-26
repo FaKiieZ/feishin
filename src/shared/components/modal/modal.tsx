@@ -36,13 +36,9 @@ export const Modal = ({ children, classNames, handlers, ...rest }: ModalProps) =
             {...rest}
             centered={true}
             classNames={{
-                body: styles.body,
                 close: styles.close,
                 content: styles.content,
                 header: styles.header,
-                inner: styles.inner,
-                overlay: styles.overlay,
-                root: styles.root,
                 title: styles.title,
                 ...classNames,
             }}
@@ -55,7 +51,6 @@ export const Modal = ({ children, classNames, handlers, ...rest }: ModalProps) =
                 blur: 1,
             }}
             radius="xl"
-            scrollAreaComponent={ScrollArea}
             transitionProps={{
                 duration: 300,
                 exitDuration: 300,
@@ -112,14 +107,15 @@ export const ConfirmModal = ({
         <Stack>
             <Flex>{children}</Flex>
             <Group justify="flex-end">
-                <Button disabled={loading} onClick={handleCancel} variant="default">
+                <Button disabled={loading} onClick={handleCancel} tabIndex={0} variant="default">
                     {labels?.cancel ? labels.cancel : 'Cancel'}
                 </Button>
                 <Button
-                    data-autofocus
+                    autoFocus={false}
                     disabled={disabled}
                     loading={loading}
                     onClick={onConfirm}
+                    tabIndex={0}
                     variant="filled"
                 >
                     {labels?.confirm ? labels.confirm : 'Confirm'}

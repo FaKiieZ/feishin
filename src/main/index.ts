@@ -154,7 +154,7 @@ const createAuthWindow = (url: string) => {
     const authWindow = new BrowserWindow({
         autoHideMenuBar: true,
         height: 700,
-        parent: mainWindow,
+        parent: mainWindow || undefined,
         webPreferences: {
             contextIsolation: true,
             nodeIntegration: false,
@@ -174,6 +174,9 @@ const createAuthWindow = (url: string) => {
 
             // If navigated back to the main domain (not auth provider), close window
             if (navDomain === mainDomain && !navigationUrl.includes('/auth/')) {
+                // Notify renderer that auth was successful
+                getMainWindow()?.webContents.send('auth-success');
+
                 // Use a shorter delay to allow the success page to briefly display
                 setTimeout(() => {
                     if (!authWindow.isDestroyed()) {
@@ -202,6 +205,9 @@ const createAuthWindow = (url: string) => {
                     currentUrl.includes('success') ||
                     (!currentUrl.includes('/auth/') && !currentUrl.includes('/login')))
             ) {
+                // Notify renderer that auth was successful
+                getMainWindow()?.webContents.send('auth-success');
+
                 setTimeout(() => {
                     if (!authWindow.isDestroyed()) {
                         authWindow.close();

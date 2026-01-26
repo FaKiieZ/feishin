@@ -59,6 +59,8 @@ export const CacheSettings = memo(() => {
                     'Browser cookies and auth data cleared successfully. Reloading app to trigger reauthentication...',
             });
 
+            closeAllModals();
+
             // Reload the app after clearing browser data to trigger reauthentication
             setTimeout(() => {
                 window.location.reload();
@@ -97,6 +99,20 @@ export const CacheSettings = memo(() => {
 
         openModal({
             children: <ConfirmModal onConfirm={onConfirm}>{message}</ConfirmModal>,
+            scrollAreaComponent: undefined,
+            size: 'sm',
+            styles: {
+                content: {
+                    height: 'auto',
+                    maxHeight: '80vh',
+                    minHeight: 'auto',
+                    overflow: 'visible',
+                },
+                inner: {
+                    alignItems: 'flex-start',
+                    paddingTop: '10vh',
+                },
+            },
             title,
         });
     };

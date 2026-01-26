@@ -28,6 +28,7 @@ const ReleaseNotesModal = lazy(() =>
 );
 
 const ipc = isElectron() ? window.api.ipc : null;
+const utils = isElectron() ? window.api.utils : null;
 
 export const App = () => {
     const { mode, theme } = useAppTheme();
@@ -45,7 +46,7 @@ export const App = () => {
             const localSettings = isElectron() ? window.api.localSettings : null;
             if (localSettings) {
                 try {
-                    await localSettings.remove('reauthenticating_server_id');
+                    await localSettings.set('reauthenticating_server_id', undefined);
                 } catch (error) {
                     // Ignore errors
                 }
@@ -94,6 +95,48 @@ export const App = () => {
             i18n.changeLanguage(language);
         }
     }, [language]);
+
+    useEffect(() => {
+        if (isElectron() && utils?.authSuccessListener) {
+            const handleAuthSuccess = async () => {
+                // Check if we're in a cookie authentication flow (indicated by stored server ID)
+                const localSettings = isElectron() ? window.api.localSettings : null;
+                let reauthServerId: null | string = null;
+
+                try {
+                    if (localSettings) {
+                        // For electron, use the localSettings API
+                        reauthServerId = await localSettings.get('reauthenticating_server_id');
+                    } else {
+                        // Fallback for web - use sessionStorage
+                        reauthServerId = sessionStorage.getItem('reauthenticating_server_id');
+                    }
+                } catch (error) {
+                    // Ignore errors accessing storage
+                }
+
+                if (reauthServerId) {
+                    // Clear the stored server ID
+                    try {
+                        if (localSettings) {
+                            await localSettings.set('reauthenticating_server_id', undefined);
+                        } else {
+                            sessionStorage.removeItem('reauthenticating_server_id');
+                        }
+                    } catch (error) {
+                        // Ignore errors
+                    }
+
+                    // Reload the app to trigger reauthentication
+                    window.location.reload();
+                }
+            };
+
+            utils.authSuccessListener(handleAuthSuccess);
+        }
+
+        // Cleanup is handled automatically by the IPC system
+    }, []);
 
     const notificationStyles = useMemo(
         () => ({
