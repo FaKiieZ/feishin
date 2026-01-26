@@ -373,6 +373,10 @@ axiosClient.interceptors.response.use(
                                 console.log(
                                     'Network error during reauthentication - preserving credentials',
                                 );
+                            } else if (currentServer?.useCookieAuth) {
+                                console.log(
+                                    'Cookie-based server auth failure - handled by use-server-authenticated hook',
+                                );
                             } else {
                                 limitedFail(currentServer);
                             }
@@ -388,6 +392,10 @@ axiosClient.interceptors.response.use(
 
             if (isAxiosError(error) && error.code === 'ERR_NETWORK') {
                 console.log('Network error during authentication - preserving credentials');
+            } else if (currentServer?.useCookieAuth) {
+                console.log(
+                    'Cookie-based server auth failure - handled by use-server-authenticated hook',
+                );
             } else {
                 limitedFail(currentServer);
             }

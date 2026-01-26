@@ -157,6 +157,65 @@ export const useServerAuthenticated = () => {
                         getUserInfoError?.message?.toLowerCase().includes('forbidden') ||
                         getUserInfoError?.message?.toLowerCase().includes('unauthorized');
 
+                    // Log error details for debugging
+                    logFn.debug('getUserInfo error details', {
+                        category: LogCategory.SYSTEM,
+                        meta: {
+                            errorMessage: getUserInfoError?.message,
+                            isForbiddenError,
+                            responseStatus: getUserInfoError?.response?.status,
+                            serverId: serverWithAuth.id,
+                            useCookieAuth: serverWithAuth.useCookieAuth,
+                        },
+                    });
+
+                    // Handle cookie-based authentication failures - be very inclusive for cookie auth
+                    // Cookie auth can fail in many ways (empty errors, network errors, etc.)
+                    if (
+                        serverWithAuth.useCookieAuth &&
+                        (isForbiddenError ||
+                            getUserInfoError?.message?.includes('Failed to get user info') ||
+                            !getUserInfoError?.message)
+                    ) {
+                        logFn.info(logMsg[LogCategory.SYSTEM].authenticatingServer, {
+                            category: LogCategory.SYSTEM,
+                            meta: {
+                                method: 'browser_reauthentication',
+                                originalError: getUserInfoError?.message,
+                                reason: 'getUserInfo failed for cookie auth server',
+                                serverId: serverWithAuth.id,
+                                serverName: serverWithAuth.name,
+                                serverType: serverWithAuth.type,
+                                url: serverWithAuth.url,
+                            },
+                        });
+
+                        toast.error({
+                            message:
+                                'Your session has expired. Opening browser for reauthentication...',
+                        });
+
+                        // Store the server ID for auto-selection after reauthentication
+                        if (localSettings) {
+                            localSettings.set('reauthenticating_server_id', serverWithAuth.id);
+                        } else {
+                            // Fallback for web - use sessionStorage
+                            sessionStorage.setItem('reauthenticating_server_id', serverWithAuth.id);
+                        }
+
+                        // Open authentication window
+                        if (isElectron() && window.api?.browser?.openAuthWindow) {
+                            window.api.browser.openAuthWindow(serverWithAuth.url);
+                        } else {
+                            // Fallback for non-Electron or if API not available
+                            window.open(serverWithAuth.url, '_blank');
+                        }
+
+                        // Don't set current server to null for cookie auth to prevent loops
+                        setReady(AuthState.INVALID);
+                        return;
+                    }
+
                     // Only reauthenticate if it's a forbidden error AND password is saved
                     if (isForbiddenError && serverWithAuth.savePassword && localSettings) {
                         const password = await localSettings.passwordGet(serverWithAuth.id);
@@ -352,6 +411,12 @@ export const useServerAuthenticated = () => {
     );
 
     useEffect(() => {
+        // Restore reauthenticating server from storage if it exists
+        const restoreReauthenticatingServer = async () => {
+            // Clean implementation without complex tracking
+            return;
+        };
+
         if (!server) {
             logFn.debug(logMsg[LogCategory.SYSTEM].serverAuthenticationInvalid, {
                 category: LogCategory.SYSTEM,
@@ -379,6 +444,9 @@ export const useServerAuthenticated = () => {
                 setReady(AuthState.INVALID);
                 return;
             }
+
+            // Restore reauthenticating server state if needed
+            restoreReauthenticatingServer();
 
             setReady(AuthState.LOADING);
             debouncedAuth(serverWithAuth);

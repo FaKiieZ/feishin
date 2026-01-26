@@ -39,6 +39,24 @@ export const App = () => {
 
     useSyncSettingsToMain();
 
+    // Clean up any stored reauthenticating server ID on app startup to prevent loops
+    useEffect(() => {
+        const cleanupReauthState = async () => {
+            const localSettings = isElectron() ? window.api.localSettings : null;
+            if (localSettings) {
+                try {
+                    await localSettings.remove('reauthenticating_server_id');
+                } catch (error) {
+                    // Ignore errors
+                }
+            } else {
+                // Fallback for web - use sessionStorage
+                sessionStorage.removeItem('reauthenticating_server_id');
+            }
+        };
+        cleanupReauthState();
+    }, []);
+
     const [webAudio, setWebAudio] = useState<WebAudio>();
 
     useEffect(() => {

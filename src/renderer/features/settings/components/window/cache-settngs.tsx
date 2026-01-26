@@ -56,15 +56,19 @@ export const CacheSettings = memo(() => {
 
             toast.success({
                 message:
-                    'Browser data cleared successfully. This should resolve Google login issues.',
+                    'Browser cookies and auth data cleared successfully. Reloading app to trigger reauthentication...',
             });
+
+            // Reload the app after clearing browser data to trigger reauthentication
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
         } catch (error) {
             console.error(error);
             toast.error({ message: (error as Error).message });
+            setIsClearing(false);
+            closeAllModals();
         }
-
-        setIsClearing(false);
-        closeAllModals();
     }, [queryClient, browser]);
 
     const openResetConfirmModal = (type: 'browserData' | 'cache' | 'query') => {

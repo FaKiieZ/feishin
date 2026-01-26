@@ -96,7 +96,18 @@ function ServerSelector() {
                     server.type === ServerType.JELLYFIN &&
                     !server.useCookieAuth &&
                     !server.credential;
-                const isSessionExpired = isNavidromeExpired || isJellyfinExpired;
+                const isCookieAuthExpired =
+                    server.useCookieAuth &&
+                    ((server.type === ServerType.NAVIDROME && !server.ndCredential) ||
+                        (server.type === ServerType.JELLYFIN && !server.credential) ||
+                        (server.type === ServerType.SUBSONIC && !server.credential));
+                const isSessionExpired =
+                    isNavidromeExpired || isJellyfinExpired || isCookieAuthExpired;
+
+                // For cookie-based servers, show external link icon even if they have credentials
+                // because SSO sessions can expire independently
+                const showCookieAuthIcon = server.useCookieAuth;
+                const showLockIcon = isSessionExpired && !server.useCookieAuth;
 
                 const logo =
                     server.type === ServerType.NAVIDROME
@@ -109,8 +120,14 @@ function ServerSelector() {
                     <Button
                         key={`server-${server.id}`}
                         onClick={() => {
-                            if (!isSessionExpired) return handleSetCurrentServer(server);
-                            return handleCredentialsModal(server);
+                            // Always try to select the server first - let the auth system handle failures
+                            if (isNavidromeExpired || isJellyfinExpired) {
+                                // For non-cookie servers with expired sessions, show credentials modal
+                                return handleCredentialsModal(server);
+                            }
+                            // For all other cases (including cookie auth), try to set as current server
+                            // The authentication system will handle reauthentication if needed
+                            return handleSetCurrentServer(server);
                         }}
                         size="lg"
                         styles={{
@@ -136,7 +153,13 @@ function ServerSelector() {
                                     {server.name}
                                 </Text>
                             </Group>
-                            {isSessionExpired ? <Icon icon="lock" /> : <Icon icon="arrowRight" />}
+                            {showCookieAuthIcon ? (
+                                <Icon icon="externalLink" />
+                            ) : showLockIcon ? (
+                                <Icon icon="lock" />
+                            ) : (
+                                <Icon icon="arrowRight" />
+                            )}
                         </Group>
                     </Button>
                 );

@@ -376,9 +376,17 @@ axiosClient.interceptors.response.use(
                 useAuthStore
                     .getState()
                     .actions.updateServer(currentServer.id, { credential: undefined });
-            }
 
-            authenticationFailure(currentServer);
+                // Don't call authenticationFailure for cookie-based servers
+                // Let use-server-authenticated hook handle it
+                if (!currentServer.useCookieAuth) {
+                    authenticationFailure(currentServer);
+                } else {
+                    console.log(
+                        'Cookie-based server auth failure - handled by use-server-authenticated hook',
+                    );
+                }
+            }
         }
 
         return Promise.reject(error);

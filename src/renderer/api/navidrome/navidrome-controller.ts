@@ -506,6 +506,10 @@ export const NavidromeController: InternalControllerEndpoint = {
             throw new Error('Failed to get genre list');
         }
 
+        if (!res.body || !res.body.data || !Array.isArray(res.body.data)) {
+            throw new Error('Invalid genre list response format');
+        }
+
         return {
             items: res.body.data.map((genre) => ndNormalize.genre(genre, apiClientProps.server)),
             startIndex: query.startIndex || 0,

@@ -440,14 +440,13 @@ async function createWindow(first = true): Promise<void> {
         const session = mainWindow?.webContents.session;
         if (!session) return;
 
-        // Clear all storage data including cookies, localStorage, sessionStorage, etc.
+        // Clear storage data but preserve localStorage (server configurations)
         await session.clearStorageData({
             storages: [
                 'appcache',
                 'cookies',
                 'filesystem',
                 'indexdb',
-                'localstorage',
                 'shadercache',
                 'websql',
                 'serviceworkers',
