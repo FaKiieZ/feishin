@@ -10,6 +10,7 @@ export const openSettingsModal = () => {
         size: '60rem',
         styles: {
             content: {
+                height: '100%',
                 maxWidth: '90%',
                 width: '100%',
             },
