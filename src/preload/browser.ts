@@ -28,11 +28,16 @@ const clearCache = (): Promise<void> => {
     return ipcRenderer.invoke('window-clear-cache');
 };
 
+const clearBrowserData = (): Promise<void> => {
+    return ipcRenderer.invoke('window-clear-browser-data');
+};
+
 const openAuthWindow = (url: string): void => {
     ipcRenderer.send('open-auth-window', url);
 };
 
 export const browser = {
+    clearBrowserData,
     clearCache,
     devtools,
     exit,

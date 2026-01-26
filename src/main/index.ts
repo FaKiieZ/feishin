@@ -174,7 +174,39 @@ const createAuthWindow = (url: string) => {
 
             // If navigated back to the main domain (not auth provider), close window
             if (navDomain === mainDomain && !navigationUrl.includes('/auth/')) {
-                setTimeout(() => authWindow.close(), 2000);
+                // Use a shorter delay to allow the success page to briefly display
+                setTimeout(() => {
+                    if (!authWindow.isDestroyed()) {
+                        authWindow.close();
+                    }
+                }, 500);
+            }
+        } catch (e) {
+            // Ignore URL parsing errors
+        }
+    });
+
+    // Also listen for when the page finishes loading to detect successful auth
+    authWindow.webContents.on('did-finish-load', () => {
+        try {
+            const currentUrl = authWindow.webContents.getURL();
+            const urlObj = new URL(url);
+            const mainDomain = urlObj.hostname;
+            const currentDomain = new URL(currentUrl).hostname;
+
+            // Check if we're on a success page or dashboard after auth
+            if (
+                currentDomain === mainDomain &&
+                (currentUrl.includes('dashboard') ||
+                    currentUrl.includes('home') ||
+                    currentUrl.includes('success') ||
+                    (!currentUrl.includes('/auth/') && !currentUrl.includes('/login')))
+            ) {
+                setTimeout(() => {
+                    if (!authWindow.isDestroyed()) {
+                        authWindow.close();
+                    }
+                }, 300);
             }
         } catch (e) {
             // Ignore URL parsing errors
@@ -404,6 +436,32 @@ async function createWindow(first = true): Promise<void> {
         return mainWindow?.webContents.session.clearCache();
     });
 
+    ipcMain.handle('window-clear-browser-data', async () => {
+        const session = mainWindow?.webContents.session;
+        if (!session) return;
+
+        // Clear all storage data including cookies, localStorage, sessionStorage, etc.
+        await session.clearStorageData({
+            storages: [
+                'appcache',
+                'cookies',
+                'filesystem',
+                'indexdb',
+                'localstorage',
+                'shadercache',
+                'websql',
+                'serviceworkers',
+                'cachestorage',
+            ],
+        });
+
+        // Also clear the cache
+        await session.clearCache();
+
+        // Clear auth cache specifically
+        await session.clearAuthCache();
+    });
+
     ipcMain.on('app-restart', () => {
         // Fix for .AppImage
         if (process.env.APPIMAGE) {
@@ -469,6 +527,7 @@ async function createWindow(first = true): Promise<void> {
 
     mainWindow.on('closed', () => {
         ipcMain.removeHandler('window-clear-cache');
+        ipcMain.removeHandler('window-clear-browser-data');
         mainWindow = null;
     });
 
