@@ -469,7 +469,7 @@ export const jfApiClient = (args: {
                     return {
                         body: response?.data,
                         headers: response?.headers as any,
-                        status: response?.status || 0,
+                        status: response?.status,
                     };
                 }
                 throw e;

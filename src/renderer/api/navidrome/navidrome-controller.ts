@@ -134,7 +134,7 @@ export const NavidromeController: InternalControllerEndpoint = {
             throw new Error('No response received from server');
         }
 
-        if (!res.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error(`Authentication failed with status ${res.status || 'unknown'}`);
         }
 
