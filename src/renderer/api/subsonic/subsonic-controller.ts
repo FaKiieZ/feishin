@@ -172,7 +172,7 @@ export const SubsonicController: InternalControllerEndpoint = {
             },
         });
 
-        if (res.status !== 200) {
+        if (!res?.status || res.status !== 200) {
             throw new Error('Failed to create favorite');
         }
 
@@ -189,7 +189,7 @@ export const SubsonicController: InternalControllerEndpoint = {
             },
         });
 
-        if (res.status !== 200) {
+        if (!res?.status || res.status !== 200) {
             throw new Error('Failed to create internet radio station');
         }
 
@@ -202,7 +202,7 @@ export const SubsonicController: InternalControllerEndpoint = {
             },
         });
 
-        if (res.status !== 200) {
+        if (!res?.status || res.status !== 200) {
             throw new Error('Failed to create playlist');
         }
 
@@ -255,7 +255,7 @@ export const SubsonicController: InternalControllerEndpoint = {
             },
         });
 
-        if (res.status !== 200) {
+        if (!res?.status || res.status !== 200) {
             throw new Error('Failed to delete playlist');
         }
 
@@ -277,7 +277,7 @@ export const SubsonicController: InternalControllerEndpoint = {
             }),
         ]);
 
-        if (res.status !== 200) {
+        if (!res?.status || res.status !== 200) {
             throw new Error('Failed to get album artist detail');
         }
 
@@ -313,7 +313,7 @@ export const SubsonicController: InternalControllerEndpoint = {
             },
         });
 
-        if (res.status !== 200) {
+        if (!res?.status || res.status !== 200) {
             throw new Error('Failed to get album artist list');
         }
 
