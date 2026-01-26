@@ -110,7 +110,7 @@ export const NavidromeController: InternalControllerEndpoint = {
             },
         });
 
-        if (!res?.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error('Failed to add to playlist');
         }
 
@@ -162,7 +162,7 @@ export const NavidromeController: InternalControllerEndpoint = {
             },
         });
 
-        if (!res?.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error('Failed to create playlist');
         }
 
@@ -181,7 +181,7 @@ export const NavidromeController: InternalControllerEndpoint = {
             },
         });
 
-        if (!res?.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error('Failed to delete playlist');
         }
 
@@ -204,7 +204,7 @@ export const NavidromeController: InternalControllerEndpoint = {
             }),
         ]);
 
-        if (!res?.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error('Failed to get album artist detail');
         }
 
@@ -247,7 +247,7 @@ export const NavidromeController: InternalControllerEndpoint = {
             },
         });
 
-        if (!res?.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error('Failed to get album artist list');
         }
 
@@ -360,7 +360,7 @@ export const NavidromeController: InternalControllerEndpoint = {
             },
         });
 
-        if (!res?.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error('Failed to get album list');
         }
 
@@ -400,7 +400,7 @@ export const NavidromeController: InternalControllerEndpoint = {
             },
         });
 
-        if (!res?.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error('Failed to get artist list');
         }
 
@@ -440,7 +440,7 @@ export const NavidromeController: InternalControllerEndpoint = {
             },
         });
 
-        if (!res?.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error('Failed to get artist radio songs');
         }
 
@@ -470,7 +470,7 @@ export const NavidromeController: InternalControllerEndpoint = {
                 },
             });
 
-            if (!res?.status || res.status !== 200) {
+            if (res.status !== 200) {
                 throw new Error('Failed to get genre list');
             }
 
@@ -502,7 +502,7 @@ export const NavidromeController: InternalControllerEndpoint = {
             },
         });
 
-        if (!res?.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error('Failed to get genre list');
         }
 
@@ -529,7 +529,7 @@ export const NavidromeController: InternalControllerEndpoint = {
             },
         });
 
-        if (!res?.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error('Failed to get playlist detail');
         }
 
@@ -549,7 +549,7 @@ export const NavidromeController: InternalControllerEndpoint = {
             },
         });
 
-        if (!res?.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error('Failed to get playlist list');
         }
 
@@ -579,7 +579,7 @@ export const NavidromeController: InternalControllerEndpoint = {
             },
         });
 
-        if (!res?.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error('Failed to get playlist song list');
         }
 
@@ -602,7 +602,7 @@ export const NavidromeController: InternalControllerEndpoint = {
         if (hasFeatureWithVersion(apiClientProps.server, ServerFeature.SERVER_PLAY_QUEUE, 2)) {
             const res = await ndApiClient(apiClientProps).getQueue();
 
-            if (!res?.status || res.status !== 200) {
+            if (res.status !== 200) {
                 throw new Error('Failed to get play queue');
             }
 
@@ -683,7 +683,7 @@ export const NavidromeController: InternalControllerEndpoint = {
             },
         });
 
-        if (!res?.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error('Failed to get similar songs');
         }
 
@@ -702,7 +702,7 @@ export const NavidromeController: InternalControllerEndpoint = {
             },
         });
 
-        if (!res?.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error('Failed to get song detail');
         }
 
@@ -734,7 +734,7 @@ export const NavidromeController: InternalControllerEndpoint = {
             },
         });
 
-        if (!res?.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error('Failed to get song list');
         }
 
@@ -769,7 +769,7 @@ export const NavidromeController: InternalControllerEndpoint = {
             query: {},
         });
 
-        if (!res?.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error('failed to get tags');
         }
 
@@ -834,7 +834,7 @@ export const NavidromeController: InternalControllerEndpoint = {
             },
         });
 
-        if (!res?.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error('Failed to get user list');
         }
 
@@ -857,7 +857,7 @@ export const NavidromeController: InternalControllerEndpoint = {
             },
         });
 
-        if (!res?.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error('Failed to move item in playlist');
         }
     },
@@ -873,7 +873,7 @@ export const NavidromeController: InternalControllerEndpoint = {
             },
         });
 
-        if (!res?.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error('Failed to remove from playlist');
         }
 
@@ -990,7 +990,7 @@ export const NavidromeController: InternalControllerEndpoint = {
                 },
             });
 
-            if (!res?.status || res.status !== 200) {
+            if (res.status !== 200) {
                 throw new Error('Failed to save play queue');
             }
             return;
@@ -1014,7 +1014,7 @@ export const NavidromeController: InternalControllerEndpoint = {
             },
         });
 
-        if (!res?.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error('Failed to share item');
         }
 
@@ -1041,7 +1041,7 @@ export const NavidromeController: InternalControllerEndpoint = {
             },
         });
 
-        if (!res?.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error('Failed to update playlist');
         }
 

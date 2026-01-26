@@ -343,7 +343,7 @@ axiosClient.interceptors.response.use(
                             limitedFail.cancel();
                             throw TIMEOUT_ERROR;
                         }
-                        if (!res?.status || res.status !== 200) {
+                        if (res.status !== 200) {
                             throw new Error(
                                 i18n.t('error.authenticatedFailed', {
                                     postProcess: 'sentenceCase',

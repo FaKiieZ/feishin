@@ -71,7 +71,7 @@ export const JellyfinController: InternalControllerEndpoint = {
                 },
             });
 
-            if (!res?.status || res.status !== 204) {
+            if (res.status !== 204) {
                 throw new Error('Failed to add to playlist');
             }
         }
@@ -162,7 +162,7 @@ export const JellyfinController: InternalControllerEndpoint = {
             },
         });
 
-        if (!res?.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error('Failed to create playlist');
         }
 
@@ -325,7 +325,7 @@ export const JellyfinController: InternalControllerEndpoint = {
             },
         });
 
-        if (!res?.status || res.status !== 200 || !songsRes?.status || songsRes.status !== 200) {
+        if (res.status !== 200 || !songsRes?.status || songsRes.status !== 200) {
             throw new Error('Failed to get album detail');
         }
 
@@ -392,7 +392,7 @@ export const JellyfinController: InternalControllerEndpoint = {
             },
         });
 
-        if (!res?.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error('Failed to get album list');
         }
 
@@ -457,7 +457,7 @@ export const JellyfinController: InternalControllerEndpoint = {
             },
         });
 
-        if (!res?.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error('Failed to get artist radio songs');
         }
 
@@ -957,7 +957,7 @@ export const JellyfinController: InternalControllerEndpoint = {
 
         const res = await jfApiClient(apiClientProps).getServerInfo();
 
-        if (!res?.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error('Failed to get server info');
         }
 
@@ -1331,7 +1331,7 @@ export const JellyfinController: InternalControllerEndpoint = {
             },
         });
 
-        if (!res?.status || res.status !== 200) {
+        if (res.status !== 200) {
             throw new Error('Failed to get user info');
         }
 
