@@ -177,6 +177,98 @@ export const useServerAuthenticated = () => {
                             getUserInfoError?.message?.includes('Failed to get user info') ||
                             !getUserInfoError?.message)
                     ) {
+                        // Check if this is a network error first
+                        const isNetwork = isNetworkError(getUserInfoError);
+
+                        if (isNetwork) {
+                            // Handle as network error - don't open auth window, redirect to server selection
+                            logFn.error(logMsg[LogCategory.SYSTEM].serverAuthenticationFailed, {
+                                category: LogCategory.SYSTEM,
+                                meta: {
+                                    action: 'cookie_auth_network_error',
+                                    error: getUserInfoError?.message || 'Network error',
+                                    serverId: serverWithAuth.id,
+                                    serverName: serverWithAuth.name,
+                                    serverType: serverWithAuth.type,
+                                },
+                            });
+
+                            toast.error({
+                                message:
+                                    'Server is unreachable. Please check your connection or try a different server.',
+                            });
+
+                            // Clear server and redirect to server selection
+                            setCurrentServer(null);
+                            setReady(AuthState.INVALID);
+                            navigate(AppRoute.ACTION_REQUIRED, { replace: true });
+                            return;
+                        }
+
+                        // Check if we're already in a reauthentication loop to prevent infinite loops
+                        let isAlreadyReauth = false;
+                        try {
+                            if (localSettings) {
+                                const storedReauthId = await localSettings.get(
+                                    'reauthenticating_server_id',
+                                );
+                                isAlreadyReauth = storedReauthId === serverWithAuth.id;
+                            } else {
+                                const storedReauthId = sessionStorage.getItem(
+                                    'reauthenticating_server_id',
+                                );
+                                isAlreadyReauth = storedReauthId === serverWithAuth.id;
+                            }
+                        } catch (error) {
+                            // Ignore errors
+                        }
+
+                        if (isAlreadyReauth) {
+                            // We're already in a reauthentication loop for this server, break the loop
+                            logFn.error(logMsg[LogCategory.SYSTEM].serverAuthenticationFailed, {
+                                category: LogCategory.SYSTEM,
+                                meta: {
+                                    action: 'cookie_auth_loop_detected',
+                                    error:
+                                        getUserInfoError?.message ||
+                                        'Reauthentication loop detected',
+                                    serverId: serverWithAuth.id,
+                                    serverName: serverWithAuth.name,
+                                    serverType: serverWithAuth.type,
+                                },
+                            });
+
+                            toast.error({
+                                message:
+                                    'Authentication failed repeatedly. Please try a different server or check your connection.',
+                            });
+
+                            console.log(
+                                'Reauthentication loop detected, clearing server and redirecting...',
+                            );
+
+                            // Clear the stored reauthentication state and redirect to server selection
+                            try {
+                                if (localSettings) {
+                                    await localSettings.set(
+                                        'reauthenticating_server_id',
+                                        undefined,
+                                    );
+                                } else {
+                                    sessionStorage.removeItem('reauthenticating_server_id');
+                                }
+                            } catch (error) {
+                                // Ignore errors
+                            }
+
+                            setCurrentServer(null);
+                            setReady(AuthState.INVALID);
+
+                            console.log('Navigating to action required...');
+                            navigate(AppRoute.ACTION_REQUIRED, { replace: true });
+                            return;
+                        }
+
                         logFn.info(logMsg[LogCategory.SYSTEM].authenticatingServer, {
                             category: LogCategory.SYSTEM,
                             meta: {

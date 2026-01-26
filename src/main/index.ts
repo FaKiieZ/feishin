@@ -165,6 +165,67 @@ const createAuthWindow = (url: string) => {
 
     authWindow.loadURL(url);
 
+    // Set a timeout to close the auth window if no clear authentication happens
+    // This prevents windows from staying open indefinitely when servers are down
+    const authTimeout = setTimeout(() => {
+        if (!authWindow.isDestroyed()) {
+            console.log('Auth window timeout - closing window and sending auth-failed');
+
+            // If timeout occurs, consider it a failure
+            getMainWindow()?.webContents.send('auth-failed', {
+                errorDescription: 'Authentication window timed out',
+                reason: 'timeout',
+            });
+
+            authWindow.close();
+        }
+    }, 10000); // Reduced to 10 seconds for faster feedback
+
+    // Clear timeout if window is closed manually
+    authWindow.on('closed', () => {
+        clearTimeout(authTimeout);
+    });
+
+    // Handle load failures (server unreachable, network issues, etc.)
+    authWindow.webContents.on(
+        'did-fail-load',
+        (event, errorCode, errorDescription, validatedURL) => {
+            console.error('Auth window failed to load:', {
+                errorCode,
+                errorDescription,
+                url: validatedURL,
+            });
+
+            // Clear the timeout since we're handling the failure
+            clearTimeout(authTimeout);
+
+            // Common network error codes that indicate server is unreachable
+            const networkErrorCodes = [
+                -2, // NAME_NOT_RESOLVED
+                -106, // INTERNET_DISCONNECTED
+                -102, // CONNECTION_REFUSED
+                -21, // NETWORK_CHANGED
+                -100, // CONNECTION_CLOSED
+                -105, // NAME_RESOLUTION_FAILED
+            ];
+
+            if (networkErrorCodes.includes(errorCode)) {
+                // Server appears to be unreachable, notify renderer to redirect to server selection
+                getMainWindow()?.webContents.send('auth-failed', {
+                    errorDescription,
+                    reason: 'server_unreachable',
+                });
+
+                // Close the auth window after a short delay
+                setTimeout(() => {
+                    if (!authWindow.isDestroyed()) {
+                        authWindow.close();
+                    }
+                }, 1000);
+            }
+        },
+    );
+
     // Close auth window when navigation to main domain happens (login success)
     authWindow.webContents.on('did-navigate', (_, navigationUrl) => {
         try {
@@ -172,10 +233,27 @@ const createAuthWindow = (url: string) => {
             const mainDomain = urlObj.hostname;
             const navDomain = new URL(navigationUrl).hostname;
 
-            // If navigated back to the main domain (not auth provider), close window
-            if (navDomain === mainDomain && !navigationUrl.includes('/auth/')) {
+            // Only trigger auth success if navigated to a specific success/dashboard page
+            // Don't trigger on just returning to the base domain
+            if (
+                navDomain === mainDomain &&
+                !navigationUrl.includes('/auth/') &&
+                !navigationUrl.includes('/login') &&
+                !navigationUrl.includes('/signin') &&
+                !navigationUrl.includes('/oauth') &&
+                (navigationUrl.includes('dashboard') ||
+                    navigationUrl.includes('home') ||
+                    navigationUrl.includes('success') ||
+                    navigationUrl.includes('/app') ||
+                    navigationUrl.includes('/main') ||
+                    navigationUrl.includes('?authenticated=true') ||
+                    navigationUrl.includes('#authenticated'))
+            ) {
                 // Notify renderer that auth was successful
                 getMainWindow()?.webContents.send('auth-success');
+
+                // Clear the timeout since we detected successful auth
+                clearTimeout(authTimeout);
 
                 // Use a shorter delay to allow the success page to briefly display
                 setTimeout(() => {
@@ -197,25 +275,129 @@ const createAuthWindow = (url: string) => {
             const mainDomain = urlObj.hostname;
             const currentDomain = new URL(currentUrl).hostname;
 
-            // Check if we're on a success page or dashboard after auth
-            if (
-                currentDomain === mainDomain &&
-                (currentUrl.includes('dashboard') ||
-                    currentUrl.includes('home') ||
-                    currentUrl.includes('success') ||
-                    (!currentUrl.includes('/auth/') && !currentUrl.includes('/login')))
-            ) {
-                // Notify renderer that auth was successful
-                getMainWindow()?.webContents.send('auth-success');
+            console.log('did-finish-load', {
+                currentDomain,
+                currentUrl,
+                mainDomain,
+                urlObj,
+            });
 
-                setTimeout(() => {
-                    if (!authWindow.isDestroyed()) {
-                        authWindow.close();
+            // Additional check: examine page content to see if it's actually a music server
+            authWindow.webContents
+                .executeJavaScript(
+                    `
+                (function() {
+                    const title = document.title.toLowerCase();
+                    const bodyText = document.body.innerText.toLowerCase();
+                    const bodyHTML = document.body.innerHTML.toLowerCase();
+                    
+                    // Check for error indicators
+                    const hasError = bodyText.includes('error') || 
+                                   bodyText.includes('unavailable') || 
+                                   bodyText.includes('maintenance') || 
+                                   bodyText.includes('502 bad gateway') ||
+                                   bodyText.includes('503 service unavailable') ||
+                                   bodyText.includes('504 gateway timeout') ||
+                                   bodyText.includes('connection refused') ||
+                                   bodyText.includes('internal server error') ||
+                                   title.includes('error') ||
+                                   title.includes('unavailable');
+                    
+                    // Check for Cloudflare error pages
+                    const isCloudflareError = bodyHTML.includes('cloudflare') && 
+                                            (bodyHTML.includes('error') || bodyHTML.includes('ray id'));
+                    
+                    // Check for music server indicators (Navidrome, Jellyfin, etc.)
+                    const hasMusicServer = bodyText.includes('navidrome') || 
+                                         bodyText.includes('jellyfin') || 
+                                         bodyText.includes('plex') ||
+                                         bodyText.includes('music') ||
+                                         bodyText.includes('media server') ||
+                                         bodyText.includes('library') ||
+                                         bodyHTML.includes('music') ||
+                                         bodyHTML.includes('player');
+                    
+                    return {
+                        hasError,
+                        isCloudflareError,
+                        hasMusicServer,
+                        title: document.title,
+                        hasLoginForm: document.querySelector('input[type="password"]') !== null,
+                        bodyLength: bodyText.length
+                    };
+                })();
+            `,
+                )
+                .then((pageInfo: any) => {
+                    console.log('Page analysis:', pageInfo);
+
+                    // If the page has error indicators or is a Cloudflare error page, treat as auth failure
+                    if (pageInfo.hasError || pageInfo.isCloudflareError) {
+                        console.log('Detected error page, sending auth-failed');
+                        clearTimeout(authTimeout);
+
+                        getMainWindow()?.webContents.send('auth-failed', {
+                            errorDescription: `Server error detected: ${pageInfo.title}`,
+                            reason: 'server_error',
+                        });
+
+                        setTimeout(() => {
+                            if (!authWindow.isDestroyed()) {
+                                authWindow.close();
+                            }
+                        }, 1000);
+                        return;
                     }
-                }, 300);
-            }
+
+                    // Check if we're on a success page or dashboard after auth
+                    // Be very specific about what constitutes successful auth - don't assume just being on main domain means success
+                    if (
+                        currentDomain === mainDomain &&
+                        (currentUrl.includes('dashboard') ||
+                            currentUrl.includes('home') ||
+                            currentUrl.includes('success') ||
+                            currentUrl.includes('/app') ||
+                            currentUrl.includes('/main') ||
+                            currentUrl.includes('?authenticated=true') ||
+                            currentUrl.includes('#authenticated') ||
+                            pageInfo.hasMusicServer || // Page has music server content
+                            (currentUrl.includes('/') &&
+                                currentUrl !== url &&
+                                !currentUrl.includes('/auth/') &&
+                                !currentUrl.includes('/login') &&
+                                !currentUrl.includes('/signin') &&
+                                !currentUrl.includes('/oauth') &&
+                                currentUrl.length > url.length + 1)) // Only if URL changed significantly
+                    ) {
+                        // Additional check: don't trigger auth-success if we just loaded the base URL without music server content
+                        // This prevents false positives when the server is accessible but auth failed
+                        const isJustBaseUrl =
+                            currentUrl === url ||
+                            currentUrl === url + '/' ||
+                            currentUrl === url.replace(/\/$/, '') ||
+                            currentUrl === url.replace(/\/$/, '') + '/';
+
+                        if (!isJustBaseUrl || pageInfo.hasMusicServer) {
+                            // Clear the timeout since we detected successful auth
+                            clearTimeout(authTimeout);
+
+                            // Notify renderer that auth was successful
+                            getMainWindow()?.webContents.send('auth-success');
+
+                            setTimeout(() => {
+                                if (!authWindow.isDestroyed()) {
+                                    authWindow.close();
+                                }
+                            }, 300);
+                        }
+                    }
+                })
+                .catch((error) => {
+                    console.error('Failed to analyze page content:', error);
+                    // If we can't analyze the page, fall back to original URL-based logic
+                });
         } catch (e) {
-            // Ignore URL parsing errors
+            console.error('Error in did-finish-load handler:', e);
         }
     });
 

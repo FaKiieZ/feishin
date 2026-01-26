@@ -27,6 +27,12 @@ const authSuccessListener = (cb: (event: IpcRendererEvent) => void) => {
     ipcRenderer.on('auth-success', cb);
 };
 
+const authFailedListener = (
+    cb: (event: IpcRendererEvent, data: { errorDescription?: string; reason: string }) => void,
+) => {
+    ipcRenderer.on('auth-failed', cb);
+};
+
 const logger = (
     cb: (
         event: IpcRendererEvent,
@@ -62,6 +68,7 @@ const forceGarbageCollection = (): boolean => {
 };
 
 export const utils = {
+    authFailedListener,
     authSuccessListener,
     disableAutoUpdates,
     download,

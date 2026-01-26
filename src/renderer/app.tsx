@@ -116,7 +116,7 @@ export const App = () => {
                 }
 
                 if (reauthServerId) {
-                    // Clear the stored server ID
+                    // Clear the stored server ID first to prevent loops
                     try {
                         if (localSettings) {
                             await localSettings.set('reauthenticating_server_id', undefined);
@@ -127,15 +127,118 @@ export const App = () => {
                         // Ignore errors
                     }
 
-                    // Reload the app to trigger reauthentication
-                    window.location.reload();
+                    // Instead of immediately reloading, check if the server is reachable
+                    try {
+                        const { getServerById } = await import('/@/renderer/store');
+                        const server = getServerById(reauthServerId);
+
+                        if (!server) {
+                            // Server not found, redirect to server selection
+                            window.location.href = '/#/action-required';
+                            return;
+                        }
+
+                        // Test server connectivity with a simple fetch with timeout
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+                        const response = await fetch(server.url, {
+                            method: 'HEAD',
+                            mode: 'no-cors', // Allow checking connectivity even with CORS issues
+                            signal: controller.signal,
+                        });
+                        clearTimeout(timeoutId);
+
+                        // If we get here, server appears to be reachable, reload the app
+                        window.location.reload();
+                    } catch (error) {
+                        // Server is not reachable or fetch failed, redirect to server selection instead of reloading
+                        console.warn(
+                            'Server unreachable after auth success, redirecting to server selection:',
+                            error,
+                        );
+
+                        // Clear the current server to force server selection
+                        try {
+                            const { useAuthStore } = await import('/@/renderer/store');
+                            useAuthStore.getState().actions.setCurrentServer(null);
+                        } catch (storeError) {
+                            // Ignore store errors
+                        }
+
+                        // Redirect to server selection page
+                        window.location.href = '/#/action-required';
+                    }
                 }
             };
 
+            const handleAuthFailed = async (data: {
+                errorDescription?: string;
+                reason: string;
+            }) => {
+                console.warn('Authentication failed:', data);
+                console.log('Handling auth failure, redirecting to server selection...');
+
+                // Clear any stored reauthenticating server ID to prevent loops
+                const localSettings = isElectron() ? window.api.localSettings : null;
+                try {
+                    if (localSettings) {
+                        await localSettings.set('reauthenticating_server_id', undefined);
+                    } else {
+                        sessionStorage.removeItem('reauthenticating_server_id');
+                    }
+                } catch (error) {
+                    // Ignore errors
+                }
+
+                // Clear the current server to force server selection
+                try {
+                    const { useAuthStore } = await import('/@/renderer/store');
+                    useAuthStore.getState().actions.setCurrentServer(null);
+                    console.log('Cleared current server');
+                } catch (storeError) {
+                    console.error('Failed to clear current server:', storeError);
+                }
+
+                // Show appropriate message based on failure reason
+                if (data.reason === 'server_unreachable') {
+                    const { toast } = await import('/@/shared/components/toast/toast');
+                    toast.error({
+                        message:
+                            'Server is unreachable. Please check your connection or try a different server.',
+                    });
+                } else if (data.reason === 'timeout') {
+                    const { toast } = await import('/@/shared/components/toast/toast');
+                    toast.error({
+                        message:
+                            'Authentication timed out. Please try again or select a different server.',
+                    });
+                } else if (data.reason === 'server_error') {
+                    const { toast } = await import('/@/shared/components/toast/toast');
+                    toast.error({
+                        message:
+                            'Server error detected. The music server appears to be down. Please try a different server.',
+                    });
+                }
+
+                // The app outlet will automatically redirect to action-required when currentServer becomes null
+                console.log('Server cleared, app outlet should handle redirect to action-required');
+            };
+
             utils.authSuccessListener(handleAuthSuccess);
+
+            // Listen for auth failures from main process
+            if (utils?.authFailedListener) {
+                utils.authFailedListener((_event, data) => {
+                    handleAuthFailed(data);
+                });
+            }
         }
 
         // Cleanup is handled automatically by the IPC system
+        return () => {
+            // Cleanup handled by IPC system automatically
+        };
     }, []);
 
     const notificationStyles = useMemo(
