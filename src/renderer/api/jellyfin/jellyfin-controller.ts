@@ -247,12 +247,7 @@ export const JellyfinController: InternalControllerEndpoint = {
             }),
         ]);
 
-        if (
-            !res?.status ||
-            res.status !== 200 ||
-            !similarArtistsRes?.status ||
-            similarArtistsRes.status !== 200
-        ) {
+        if (res.status !== 200 || similarArtistsRes.status !== 200) {
             throw new Error('Failed to get album artist detail');
         }
 
@@ -325,7 +320,7 @@ export const JellyfinController: InternalControllerEndpoint = {
             },
         });
 
-        if (res.status !== 200 || !songsRes?.status || songsRes.status !== 200) {
+        if (res.status !== 200 || songsRes.status !== 200) {
             throw new Error('Failed to get album detail');
         }
 
