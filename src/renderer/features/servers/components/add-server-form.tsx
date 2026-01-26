@@ -144,10 +144,8 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
                 values.url,
                 {
                     legacy: values.legacyAuth,
-                    password:
-                        values.useCookieAuth && !values.password ? 'cookie-auth' : values.password,
-                    username:
-                        values.useCookieAuth && !values.username ? 'cookie-auth' : values.username,
+                    password: values.password,
+                    username: values.username,
                 },
                 values.type as ServerType,
                 values.useCookieAuth,
@@ -167,7 +165,7 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
                 type: values.type as ServerType,
                 url: values.url.replace(/\/$/, ''),
                 userId: data.userId,
-                username: data.username || values.username || 'cookie-auth-user',
+                username: data.username,
             };
 
             if (values.preferInstantMix !== undefined) {

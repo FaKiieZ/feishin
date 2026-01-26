@@ -116,14 +116,8 @@ export const EditServerForm = ({ isUpdate, onCancel, password, server }: EditSer
                     values.url,
                     {
                         legacy: values.legacyAuth,
-                        password:
-                            values.useCookieAuth && !values.password
-                                ? 'cookie-auth'
-                                : values.password,
-                        username:
-                            values.useCookieAuth && !values.username
-                                ? 'cookie-auth'
-                                : values.username,
+                        password: values.password,
+                        username: values.username,
                     },
                     values.type,
                     values.useCookieAuth,
@@ -143,7 +137,7 @@ export const EditServerForm = ({ isUpdate, onCancel, password, server }: EditSer
                     type: values.type,
                     url: values.url,
                     userId: data.userId,
-                    username: data.username || values.username || 'cookie-auth-user',
+                    username: data.username,
                 };
 
                 if (data.ndCredential !== undefined) {
