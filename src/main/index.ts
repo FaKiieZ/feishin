@@ -167,6 +167,7 @@ const createAuthWindow = (url: string) => {
 
     // Set a timeout to close the auth window if no clear authentication happens
     // This prevents windows from staying open indefinitely when servers are down
+    // Increased timeout for OAuth flows which can take longer
     const authTimeout = setTimeout(() => {
         if (!authWindow.isDestroyed()) {
             console.log('Auth window timeout - closing window and sending auth-failed');
@@ -179,7 +180,7 @@ const createAuthWindow = (url: string) => {
 
             authWindow.close();
         }
-    }, 10000); // Reduced to 10 seconds for faster feedback
+    }, 30000); // Increased to 30 seconds to accommodate OAuth flows
 
     // Clear timeout if window is closed manually
     authWindow.on('closed', () => {
@@ -189,7 +190,7 @@ const createAuthWindow = (url: string) => {
     // Handle load failures (server unreachable, network issues, etc.)
     authWindow.webContents.on(
         'did-fail-load',
-        (event, errorCode, errorDescription, validatedURL) => {
+        (_event, errorCode, errorDescription, validatedURL) => {
             console.error('Auth window failed to load:', {
                 errorCode,
                 errorDescription,
@@ -233,22 +234,38 @@ const createAuthWindow = (url: string) => {
             const mainDomain = urlObj.hostname;
             const navDomain = new URL(navigationUrl).hostname;
 
-            // Only trigger auth success if navigated to a specific success/dashboard page
-            // Don't trigger on just returning to the base domain
+            console.log('Navigation detected:', {
+                isMainDomain: navDomain === mainDomain,
+                mainDomain,
+                navDomain,
+                navigationUrl,
+            });
+
+            // Check if we've returned to the main server domain after OAuth
+            // Be more permissive about what constitutes successful auth
             if (
                 navDomain === mainDomain &&
                 !navigationUrl.includes('/auth/') &&
                 !navigationUrl.includes('/login') &&
                 !navigationUrl.includes('/signin') &&
-                !navigationUrl.includes('/oauth') &&
+                !navigationUrl.includes('/oauth/authorize') && // Allow OAuth callback URLs
                 (navigationUrl.includes('dashboard') ||
                     navigationUrl.includes('home') ||
                     navigationUrl.includes('success') ||
                     navigationUrl.includes('/app') ||
                     navigationUrl.includes('/main') ||
                     navigationUrl.includes('?authenticated=true') ||
-                    navigationUrl.includes('#authenticated'))
+                    navigationUrl.includes('#authenticated') ||
+                    navigationUrl.includes('oauth/callback') ||
+                    navigationUrl.includes('auth/callback') ||
+                    // Allow any path that's not clearly an auth page after returning to main domain
+                    (navigationUrl !== url &&
+                        navigationUrl !== url + '/' &&
+                        !navigationUrl.endsWith('/login') &&
+                        !navigationUrl.endsWith('/signin')))
             ) {
+                console.log('Detected successful auth navigation, sending auth-success');
+
                 // Notify renderer that auth was successful
                 getMainWindow()?.webContents.send('auth-success');
 
@@ -264,6 +281,7 @@ const createAuthWindow = (url: string) => {
             }
         } catch (e) {
             // Ignore URL parsing errors
+            console.error('Error in did-navigate handler:', e);
         }
     });
 
@@ -290,22 +308,36 @@ const createAuthWindow = (url: string) => {
                     const title = document.title.toLowerCase();
                     const bodyText = document.body.innerText.toLowerCase();
                     const bodyHTML = document.body.innerHTML.toLowerCase();
+                    const currentUrl = window.location.href.toLowerCase();
                     
-                    // Check for error indicators
-                    const hasError = bodyText.includes('error') || 
-                                   bodyText.includes('unavailable') || 
-                                   bodyText.includes('maintenance') || 
-                                   bodyText.includes('502 bad gateway') ||
-                                   bodyText.includes('503 service unavailable') ||
-                                   bodyText.includes('504 gateway timeout') ||
-                                   bodyText.includes('connection refused') ||
-                                   bodyText.includes('internal server error') ||
-                                   title.includes('error') ||
-                                   title.includes('unavailable');
+                    // Check if this is an OAuth flow (Google, Microsoft, etc.)
+                    const isOAuthFlow = currentUrl.includes('accounts.google.com') ||
+                                       currentUrl.includes('login.microsoftonline.com') ||
+                                       currentUrl.includes('github.com/login/oauth') ||
+                                       currentUrl.includes('oauth') ||
+                                       currentUrl.includes('auth') ||
+                                       bodyText.includes('sign in with') ||
+                                       bodyText.includes('continue with') ||
+                                       bodyHTML.includes('oauth') ||
+                                       title.includes('sign in') ||
+                                       title.includes('log in');
                     
-                    // Check for Cloudflare error pages
-                    const isCloudflareError = bodyHTML.includes('cloudflare') && 
-                                            (bodyHTML.includes('error') || bodyHTML.includes('ray id'));
+                    // Only check for server errors if this is NOT an OAuth flow
+                    // Be more specific about what constitutes a real server error
+                    const hasServerError = !isOAuthFlow && (
+                                          (bodyText.includes('502 bad gateway') && title.includes('502')) ||
+                                          (bodyText.includes('503 service unavailable') && title.includes('503')) ||
+                                          (bodyText.includes('504 gateway timeout') && title.includes('504')) ||
+                                          (bodyText.includes('internal server error') && title.includes('500')) ||
+                                          (bodyText.includes('connection refused') && bodyText.includes('unable to connect')) ||
+                                          (title.includes('error') && (title.includes('500') || title.includes('502') || title.includes('503') || title.includes('504'))) ||
+                                          (bodyText.includes('this site can\\'t be reached') && bodyText.includes('connection refused'))
+                                        );
+                    
+                    // Check for Cloudflare error pages - but not for OAuth redirects
+                    const isCloudflareError = !isOAuthFlow && bodyHTML.includes('cloudflare') && 
+                                            bodyHTML.includes('ray id') && 
+                                            (bodyHTML.includes('error 5') || bodyHTML.includes('error 4'));
                     
                     // Check for music server indicators (Navidrome, Jellyfin, etc.)
                     const hasMusicServer = bodyText.includes('navidrome') || 
@@ -318,12 +350,14 @@ const createAuthWindow = (url: string) => {
                                          bodyHTML.includes('player');
                     
                     return {
-                        hasError,
+                        hasError: hasServerError,
                         isCloudflareError,
                         hasMusicServer,
+                        isOAuthFlow,
                         title: document.title,
                         hasLoginForm: document.querySelector('input[type="password"]') !== null,
-                        bodyLength: bodyText.length
+                        bodyLength: bodyText.length,
+                        url: currentUrl
                     };
                 })();
             `,
@@ -331,9 +365,9 @@ const createAuthWindow = (url: string) => {
                 .then((pageInfo: any) => {
                     console.log('Page analysis:', pageInfo);
 
-                    // If the page has error indicators or is a Cloudflare error page, treat as auth failure
+                    // If the page has real server errors (not OAuth flows), treat as auth failure
                     if (pageInfo.hasError || pageInfo.isCloudflareError) {
-                        console.log('Detected error page, sending auth-failed');
+                        console.log('Detected actual server error page, sending auth-failed');
                         clearTimeout(authTimeout);
 
                         getMainWindow()?.webContents.send('auth-failed', {
@@ -346,6 +380,12 @@ const createAuthWindow = (url: string) => {
                                 authWindow.close();
                             }
                         }, 1000);
+                        return;
+                    }
+
+                    // If this is an OAuth flow, don't try to detect success yet - let the flow complete
+                    if (pageInfo.isOAuthFlow) {
+                        console.log('Detected OAuth flow, allowing auth to continue...');
                         return;
                     }
 
@@ -631,7 +671,6 @@ async function createWindow(first = true): Promise<void> {
         // Clear storage data but preserve localStorage (server configurations)
         await session.clearStorageData({
             storages: [
-                'appcache',
                 'cookies',
                 'filesystem',
                 'indexdb',

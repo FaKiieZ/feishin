@@ -11,6 +11,7 @@ import { AppRoute } from '/@/renderer/router/routes';
 import { getServerById, useAuthStoreActions, useCurrentServer } from '/@/renderer/store';
 import { LogCategory, logFn } from '/@/renderer/utils/logger';
 import { logMsg } from '/@/renderer/utils/logger-message';
+import { ReauthenticationManager } from '/@/renderer/utils/reauthentication-manager';
 import { toast } from '/@/shared/components/toast/toast';
 import { AuthState } from '/@/shared/types/types';
 
@@ -206,22 +207,9 @@ export const useServerAuthenticated = () => {
                         }
 
                         // Check if we're already in a reauthentication loop to prevent infinite loops
-                        let isAlreadyReauth = false;
-                        try {
-                            if (localSettings) {
-                                const storedReauthId = await localSettings.get(
-                                    'reauthenticating_server_id',
-                                );
-                                isAlreadyReauth = storedReauthId === serverWithAuth.id;
-                            } else {
-                                const storedReauthId = sessionStorage.getItem(
-                                    'reauthenticating_server_id',
-                                );
-                                isAlreadyReauth = storedReauthId === serverWithAuth.id;
-                            }
-                        } catch (error) {
-                            // Ignore errors
-                        }
+                        const isAlreadyReauth = await ReauthenticationManager.isReauthenticating(
+                            serverWithAuth.id,
+                        );
 
                         if (isAlreadyReauth) {
                             // We're already in a reauthentication loop for this server, break the loop
@@ -248,18 +236,7 @@ export const useServerAuthenticated = () => {
                             );
 
                             // Clear the stored reauthentication state and redirect to server selection
-                            try {
-                                if (localSettings) {
-                                    await localSettings.set(
-                                        'reauthenticating_server_id',
-                                        undefined,
-                                    );
-                                } else {
-                                    sessionStorage.removeItem('reauthenticating_server_id');
-                                }
-                            } catch (error) {
-                                // Ignore errors
-                            }
+                            await ReauthenticationManager.clearReauthenticating(serverWithAuth.id);
 
                             setCurrentServer(null);
                             setReady(AuthState.INVALID);
@@ -288,12 +265,7 @@ export const useServerAuthenticated = () => {
                         });
 
                         // Store the server ID for auto-selection after reauthentication
-                        if (localSettings) {
-                            localSettings.set('reauthenticating_server_id', serverWithAuth.id);
-                        } else {
-                            // Fallback for web - use sessionStorage
-                            sessionStorage.setItem('reauthenticating_server_id', serverWithAuth.id);
-                        }
+                        await ReauthenticationManager.setReauthenticating(serverWithAuth.id);
 
                         // Open authentication window
                         if (isElectron() && window.api?.browser?.openAuthWindow) {

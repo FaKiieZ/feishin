@@ -16,6 +16,7 @@ import { AppRouter } from '/@/renderer/router/app-router';
 import { useCssSettings, useHotkeySettings, useLanguage } from '/@/renderer/store';
 import { useAppTheme } from '/@/renderer/themes/use-app-theme';
 import { sanitizeCss } from '/@/renderer/utils/sanitize';
+import { ReauthenticationManager } from '/@/renderer/utils/reauthentication-manager';
 import { WebAudio } from '/@/shared/types/types';
 import '/@/shared/styles/global.css';
 import { PlayerProvider } from '/@/renderer/features/player/context/player-context';
@@ -42,20 +43,7 @@ export const App = () => {
 
     // Clean up any stored reauthenticating server ID on app startup to prevent loops
     useEffect(() => {
-        const cleanupReauthState = async () => {
-            const localSettings = isElectron() ? window.api.localSettings : null;
-            if (localSettings) {
-                try {
-                    await localSettings.set('reauthenticating_server_id', undefined);
-                } catch (error) {
-                    // Ignore errors
-                }
-            } else {
-                // Fallback for web - use sessionStorage
-                sessionStorage.removeItem('reauthenticating_server_id');
-            }
-        };
-        cleanupReauthState();
+        ReauthenticationManager.forceCleanup();
     }, []);
 
     const [webAudio, setWebAudio] = useState<WebAudio>();
@@ -100,32 +88,11 @@ export const App = () => {
         if (isElectron() && utils?.authSuccessListener) {
             const handleAuthSuccess = async () => {
                 // Check if we're in a cookie authentication flow (indicated by stored server ID)
-                const localSettings = isElectron() ? window.api.localSettings : null;
-                let reauthServerId: null | string = null;
-
-                try {
-                    if (localSettings) {
-                        // For electron, use the localSettings API
-                        reauthServerId = await localSettings.get('reauthenticating_server_id');
-                    } else {
-                        // Fallback for web - use sessionStorage
-                        reauthServerId = sessionStorage.getItem('reauthenticating_server_id');
-                    }
-                } catch (error) {
-                    // Ignore errors accessing storage
-                }
+                const reauthServerId = await ReauthenticationManager.getStoredServerId();
 
                 if (reauthServerId) {
                     // Clear the stored server ID first to prevent loops
-                    try {
-                        if (localSettings) {
-                            await localSettings.set('reauthenticating_server_id', undefined);
-                        } else {
-                            sessionStorage.removeItem('reauthenticating_server_id');
-                        }
-                    } catch (error) {
-                        // Ignore errors
-                    }
+                    await ReauthenticationManager.clearReauthenticating(reauthServerId);
 
                     // Instead of immediately reloading, check if the server is reachable
                     try {
@@ -142,7 +109,7 @@ export const App = () => {
                         const controller = new AbortController();
                         const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-                        const response = await fetch(server.url, {
+                        await fetch(server.url, {
                             method: 'HEAD',
                             mode: 'no-cors', // Allow checking connectivity even with CORS issues
                             signal: controller.signal,
@@ -180,16 +147,7 @@ export const App = () => {
                 console.log('Handling auth failure, redirecting to server selection...');
 
                 // Clear any stored reauthenticating server ID to prevent loops
-                const localSettings = isElectron() ? window.api.localSettings : null;
-                try {
-                    if (localSettings) {
-                        await localSettings.set('reauthenticating_server_id', undefined);
-                    } else {
-                        sessionStorage.removeItem('reauthenticating_server_id');
-                    }
-                } catch (error) {
-                    // Ignore errors
-                }
+                await ReauthenticationManager.forceCleanup();
 
                 // Clear the current server to force server selection
                 try {
