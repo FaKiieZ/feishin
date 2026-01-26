@@ -15,6 +15,7 @@
 
 .content {
     padding: var(--theme-spacing-md);
+    overflow: hidden;
     background: var(--theme-colors-background);
     border: 2px solid var(--theme-colors-border);
 }

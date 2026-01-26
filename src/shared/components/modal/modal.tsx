@@ -36,9 +36,13 @@ export const Modal = ({ children, classNames, handlers, ...rest }: ModalProps) =
             {...rest}
             centered={true}
             classNames={{
+                body: styles.body,
                 close: styles.close,
                 content: styles.content,
                 header: styles.header,
+                inner: styles.inner,
+                overlay: styles.overlay,
+                root: styles.root,
                 title: styles.title,
                 ...classNames,
             }}
@@ -110,7 +114,13 @@ export const ConfirmModal = ({
                 <Button disabled={loading} onClick={handleCancel} variant="default">
                     {labels?.cancel ? labels.cancel : 'Cancel'}
                 </Button>
-                <Button disabled={disabled} loading={loading} onClick={onConfirm} variant="filled">
+                <Button
+                    data-autofocus
+                    disabled={disabled}
+                    loading={loading}
+                    onClick={onConfirm}
+                    variant="filled"
+                >
                     {labels?.confirm ? labels.confirm : 'Confirm'}
                 </Button>
             </Group>
