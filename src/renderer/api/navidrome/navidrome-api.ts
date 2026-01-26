@@ -463,7 +463,7 @@ export const ndApiClient = (args: {
                     return {
                         body: { data: response?.data, headers: response?.headers },
                         headers: response?.headers as any,
-                        status: response?.status || 0,
+                        status: response?.status,
                     };
                 }
                 throw e;
