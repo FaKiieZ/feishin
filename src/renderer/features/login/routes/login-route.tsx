@@ -133,6 +133,7 @@ const LoginRoute = () => {
                     username: values.username,
                 },
                 serverType as ServerType,
+                false, // useCookieAuth - login route doesn't have this option
             );
 
             if (!data) {

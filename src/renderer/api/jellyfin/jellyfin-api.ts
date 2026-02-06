@@ -376,9 +376,17 @@ axiosClient.interceptors.response.use(
                 useAuthStore
                     .getState()
                     .actions.updateServer(currentServer.id, { credential: undefined });
-            }
 
-            authenticationFailure(currentServer);
+                // Don't call authenticationFailure for cookie-based servers
+                // Let use-server-authenticated hook handle it
+                if (!currentServer.useCookieAuth) {
+                    authenticationFailure(currentServer);
+                } else {
+                    console.log(
+                        'Cookie-based server auth failure - handled by use-server-authenticated hook',
+                    );
+                }
+            }
         }
 
         return Promise.reject(error);
@@ -407,8 +415,9 @@ export const jfApiClient = (args: {
     server: null | ServerListItemWithCredential;
     signal?: AbortSignal;
     url?: string;
+    useCookieAuth?: boolean;
 }) => {
-    const { server, signal, url } = args;
+    const { server, signal, url, useCookieAuth } = args;
 
     return initClient(contract, {
         api: async ({ body, headers, method, path }) => {
@@ -438,6 +447,7 @@ export const jfApiClient = (args: {
                     params,
                     signal,
                     url: `${baseUrl}/${api}`,
+                    withCredentials: server?.useCookieAuth || useCookieAuth || false,
                 });
                 return {
                     body: result.data,
@@ -459,7 +469,7 @@ export const jfApiClient = (args: {
                     return {
                         body: response?.data,
                         headers: response?.headers as any,
-                        status: response?.status,
+                        status: response?.status || 0,
                     };
                 }
                 throw e;

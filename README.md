@@ -39,6 +39,7 @@ Rewrite of [Sonixd](https://github.com/jeffvli/sonixd).
 - [x] Scrobble playback to your server
 - [x] Smart playlist editor (Navidrome)
 - [x] Synchronized and unsynchronized lyrics support
+- [x] Cookie-based authentication for SSO/proxy setups (Cloudflare Zero Trust, etc.)
 - [ ] [Request a feature](https://github.com/jeffvli/feishin/issues) or [view taskboard](https://github.com/users/jeffvli/projects/5/views/1)
 
 ## Screenshots
@@ -129,6 +130,7 @@ services:
 
 - **Navidrome** - For the best experience, select "Save password" when creating the server and configure the `SessionTimeout` setting in your Navidrome config to a larger value (e.g. 72h).
     - **Linux users** - The default password store uses `libsecret`. `kwallet4/5/6` are also supported, but must be explicitly set in Settings > Window > Passwords/secret store.
+- **Servers behind SSO/proxy authentication** - If your server is protected by Cloudflare Zero Trust or similar authentication, enable the "Enable cookie-based authentication" checkbox and use the "Authenticate in Browser" button. See the FAQ section for detailed setup instructions.
 
 3. _Optional_ - If you want to host Feishin on a subpath (not `/`), then pass in the following environment variable: `PUBLIC_PATH=PATH`. For example, to host on `/feishin`, pass in `PUBLIC_PATH=/feishin`.
 
@@ -159,6 +161,53 @@ Feishin supports any music server that implements a [Navidrome](https://www.navi
     - [Supysonic](https://github.com/spl0k/supysonic)
     - [Qm-Music](https://github.com/chenqimiao/qm-music)
     - More (?)
+
+### How do I use Feishin with a server behind Cloudflare Zero Trust or other SSO/proxy authentication?
+
+If your server is protected by Cloudflare Zero Trust (formerly Cloudflare Access), or any other SSO/proxy authentication that uses cookies, Feishin supports a **dual authentication** approach that works with these setups.
+
+#### Understanding Dual Authentication
+
+When using cookie-based authentication, Feishin implements a two-layer authentication system:
+
+1. **Layer 1 - Proxy Authentication**: Cloudflare Zero Trust (or similar service) handles access control using cookies from your SSO provider (Google, Azure AD, etc.)
+2. **Layer 2 - Server Authentication**: Your music server (Navidrome, Jellyfin, etc.) still requires its own username and password for API access
+
+This means you need both valid SSO cookies AND valid server credentials for Feishin to work properly.
+
+#### Setup Steps
+
+1. **Authenticate with your SSO provider**: Open your server URL in a web browser and complete the OAuth/SSO authentication flow (e.g., sign in with Google through Cloudflare Zero Trust). This establishes the necessary authentication cookies in your browser.
+
+2. **Enable cookie-based authentication in Feishin**: When adding or editing a server in Feishin:
+    - Check the **"Enable cookie-based authentication"** checkbox
+    - This tells Feishin to include your SSO authentication cookies with all requests to bypass the proxy layer
+
+3. **Use the authentication button**: When cookie-based authentication is enabled, an **"Authenticate in Browser"** button appears:
+    - Click this button to open your server URL in a popup window (desktop app) or new tab (web version)
+    - Complete the SSO authentication flow if prompted
+    - The authentication cookies will be shared between the popup and Feishin
+    - Close the popup/tab once authentication is complete
+
+4. **Enter your server credentials**: Fill in the remaining server details:
+    - **Server name**: A friendly name for your server
+    - **Server URL**: The full URL to your music server (e.g., `https://music.example.com`)
+    - **Username**: Your music server username (not your SSO username)
+    - **Password**: Your music server password (not your SSO password)
+
+#### Important Notes
+
+- **Authentication order matters**: Always authenticate with your SSO provider before or during server setup
+- **Dual credentials required**: You need both SSO authentication (cookies) AND music server credentials (username/password)
+- **Session management**: If your SSO session expires, you may need to re-authenticate using the "Authenticate in Browser" button
+- **Server compatibility**: Cookie-based authentication is available for all server types (Navidrome, Jellyfin, and Subsonic-compatible servers)
+- **Desktop vs Web**: The desktop app opens authentication in a popup window for better cookie sharing, while the web version opens a new tab
+
+#### Troubleshooting
+
+- **"Authentication failed" error**: Check that you've completed SSO authentication in your browser and that your music server credentials are correct
+- **"Cannot connect" error**: Verify that your SSO authentication cookies are valid by visiting your server URL in a browser
+- **Expired sessions**: Use the "Authenticate in Browser" button to refresh your SSO authentication without re-entering server details
 
 ### I have the issue "The SUID sandbox helper binary was found, but is not configured correctly" on Linux
 

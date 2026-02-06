@@ -14,9 +14,11 @@ import NavidromeIcon from '/@/renderer/features/servers/assets/navidrome.png';
 import SubsonicIcon from '/@/renderer/features/servers/assets/opensubsonic.png';
 import { IgnoreCorsSslSwitches } from '/@/renderer/features/servers/components/ignore-cors-ssl-switches';
 import { useAuthStoreActions } from '/@/renderer/store';
+import { Button } from '/@/shared/components/button/button';
 import { Checkbox } from '/@/shared/components/checkbox/checkbox';
 import { Divider } from '/@/shared/components/divider/divider';
 import { Group } from '/@/shared/components/group/group';
+import { Icon } from '/@/shared/components/icon/icon';
 import { ModalButton } from '/@/shared/components/modal/model-shared';
 import { Paper } from '/@/shared/components/paper/paper';
 import { PasswordInput } from '/@/shared/components/password-input/password-input';
@@ -117,11 +119,13 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
                     ? localSettings.env.SERVER_TYPE
                     : toServerType(window.SERVER_TYPE)) ?? ServerType.NAVIDROME,
             url: (localSettings ? localSettings.env.SERVER_URL : window.SERVER_URL) ?? 'https://',
+            useCookieAuth: false,
             username: '',
         },
     });
 
-    const isSubmitDisabled = !form.values.name || !form.values.url || !form.values.username;
+    const isSubmitDisabled =
+        !form.values.name || !form.values.url || !form.values.username || !form.values.password;
 
     const fillServerDetails = (server: DiscoveredServerItem) => {
         form.setValues({ ...server });
@@ -146,6 +150,7 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
                     username: values.username,
                 },
                 values.type as ServerType,
+                values.useCookieAuth,
             );
 
             if (!data) {
@@ -179,6 +184,10 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
 
             if (values.preferRemoteUrl !== undefined) {
                 serverItem.preferRemoteUrl = values.preferRemoteUrl;
+            }
+
+            if (values.useCookieAuth !== undefined) {
+                serverItem.useCookieAuth = values.useCookieAuth;
             }
 
             if (data.ndCredential !== undefined) {
@@ -298,8 +307,41 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
                             context: 'password',
                             postProcess: 'titleCase',
                         })}
+                        required
                         {...form.getInputProps('password')}
                     />
+                    <Checkbox
+                        description={t('form.addServer.input', {
+                            context: 'useCookieAuthDescription',
+                            postProcess: 'sentenceCase',
+                        })}
+                        label={t('form.addServer.input', {
+                            context: 'useCookieAuth',
+                            postProcess: 'titleCase',
+                        })}
+                        {...form.getInputProps('useCookieAuth', {
+                            type: 'checkbox',
+                        })}
+                    />
+                    {form.values.useCookieAuth && form.values.url && (
+                        <Button
+                            leftSection={<Icon icon="externalLink" />}
+                            onClick={() => {
+                                if (isElectron() && window.api?.browser?.openAuthWindow) {
+                                    window.api.browser.openAuthWindow(form.values.url);
+                                } else {
+                                    // Fallback for non-Electron or if API not available
+                                    window.open(form.values.url, '_blank');
+                                }
+                            }}
+                            variant="light"
+                        >
+                            {t('form.addServer.authenticateInBrowser', {
+                                defaultValue: 'Authenticate in Browser',
+                                postProcess: 'titleCase',
+                            })}
+                        </Button>
+                    )}
                     {localSettings && form.values.type === ServerType.NAVIDROME && (
                         <Checkbox
                             label={t('form.addServer.input', {

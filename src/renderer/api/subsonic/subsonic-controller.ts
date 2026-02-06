@@ -101,7 +101,7 @@ export const SubsonicController: InternalControllerEndpoint = {
 
         return null;
     },
-    authenticate: async (url, body) => {
+    authenticate: async (url, body, useCookieAuth) => {
         let credential: string;
         let credentialParams: {
             p?: string;
@@ -130,7 +130,11 @@ export const SubsonicController: InternalControllerEndpoint = {
             };
         }
 
-        const resp = await ssApiClient({ server: null, url: cleanServerUrl }).authenticate({
+        const resp = await ssApiClient({
+            server: null,
+            url: cleanServerUrl,
+            useCookieAuth,
+        }).authenticate({
             query: {
                 c: 'Feishin',
                 f: 'json',
@@ -140,8 +144,12 @@ export const SubsonicController: InternalControllerEndpoint = {
             },
         });
 
-        if (resp.status !== 200) {
-            throw new Error('Failed to log in');
+        if (!resp) {
+            throw new Error('No response received from server');
+        }
+
+        if (!resp.status || resp.status !== 200) {
+            throw new Error(`Authentication failed with status ${resp.status || 'unknown'}`);
         }
 
         return {
@@ -165,7 +173,7 @@ export const SubsonicController: InternalControllerEndpoint = {
             },
         });
 
-        if (res.status !== 200) {
+        if (!res?.status || res.status !== 200) {
             throw new Error('Failed to create favorite');
         }
 
@@ -182,7 +190,7 @@ export const SubsonicController: InternalControllerEndpoint = {
             },
         });
 
-        if (res.status !== 200) {
+        if (!res?.status || res.status !== 200) {
             throw new Error('Failed to create internet radio station');
         }
 
@@ -195,7 +203,7 @@ export const SubsonicController: InternalControllerEndpoint = {
             },
         });
 
-        if (res.status !== 200) {
+        if (!res?.status || res.status !== 200) {
             throw new Error('Failed to create playlist');
         }
 
@@ -248,7 +256,7 @@ export const SubsonicController: InternalControllerEndpoint = {
             },
         });
 
-        if (res.status !== 200) {
+        if (!res?.status || res.status !== 200) {
             throw new Error('Failed to delete playlist');
         }
 
@@ -270,14 +278,14 @@ export const SubsonicController: InternalControllerEndpoint = {
             }),
         ]);
 
-        if (res.status !== 200) {
+        if (!res?.status || res.status !== 200) {
             throw new Error('Failed to get album artist detail');
         }
 
         const artist = res.body.artist;
 
         let artistInfo;
-        if (artistInfoRes.status === 200) {
+        if (artistInfoRes?.status === 200) {
             artistInfo = artistInfoRes.body.artistInfo;
         }
 
@@ -306,7 +314,7 @@ export const SubsonicController: InternalControllerEndpoint = {
             },
         });
 
-        if (res.status !== 200) {
+        if (!res?.status || res.status !== 200) {
             throw new Error('Failed to get album artist list');
         }
 
@@ -1856,7 +1864,9 @@ export const SubsonicController: InternalControllerEndpoint = {
     getUserInfo: async (args) => {
         const { apiClientProps, query } = args;
 
-        const res = await ssApiClient(apiClientProps).getUser({
+        const res = await ssApiClient({
+            server: apiClientProps.server,
+        }).getUser({
             query: {
                 username: query.username,
             },

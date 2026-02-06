@@ -343,7 +343,7 @@ axiosClient.interceptors.response.use(
                             limitedFail.cancel();
                             throw TIMEOUT_ERROR;
                         }
-                        if (res.status !== 200) {
+                        if (!res?.status || res.status !== 200) {
                             throw new Error(
                                 i18n.t('error.authenticatedFailed', {
                                     postProcess: 'sentenceCase',
@@ -373,6 +373,10 @@ axiosClient.interceptors.response.use(
                                 console.log(
                                     'Network error during reauthentication - preserving credentials',
                                 );
+                            } else if (currentServer?.useCookieAuth) {
+                                console.log(
+                                    'Cookie-based server auth failure - handled by use-server-authenticated hook',
+                                );
                             } else {
                                 limitedFail(currentServer);
                             }
@@ -388,6 +392,10 @@ axiosClient.interceptors.response.use(
 
             if (isAxiosError(error) && error.code === 'ERR_NETWORK') {
                 console.log('Network error during authentication - preserving credentials');
+            } else if (currentServer?.useCookieAuth) {
+                console.log(
+                    'Cookie-based server auth failure - handled by use-server-authenticated hook',
+                );
             } else {
                 limitedFail(currentServer);
             }
@@ -401,8 +409,9 @@ export const ndApiClient = (args: {
     server: null | ServerListItemWithCredential;
     signal?: AbortSignal;
     url?: string;
+    useCookieAuth?: boolean;
 }) => {
-    const { server, signal, url } = args;
+    const { server, signal, url, useCookieAuth } = args;
 
     return initClient(contract, {
         api: async ({ body, headers, method, path }) => {
@@ -432,6 +441,7 @@ export const ndApiClient = (args: {
                     params,
                     signal,
                     url: `${baseUrl}/${api}`,
+                    withCredentials: server?.useCookieAuth || useCookieAuth || false,
                 });
                 return {
                     body: { data: result.data, headers: result.headers },
@@ -453,7 +463,7 @@ export const ndApiClient = (args: {
                     return {
                         body: { data: response?.data, headers: response?.headers },
                         headers: response?.headers as any,
-                        status: response?.status,
+                        status: response?.status || 0,
                     };
                 }
                 throw e;

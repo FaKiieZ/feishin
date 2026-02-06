@@ -95,6 +95,7 @@ export type ServerListItem = {
     savePassword?: boolean;
     type: ServerType;
     url: string;
+    useCookieAuth?: boolean;
     userId: null | string;
     username: string;
     version?: string;

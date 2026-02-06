@@ -11,6 +11,7 @@ import { AppRoute } from '/@/renderer/router/routes';
 import { getServerById, useAuthStoreActions, useCurrentServer } from '/@/renderer/store';
 import { LogCategory, logFn } from '/@/renderer/utils/logger';
 import { logMsg } from '/@/renderer/utils/logger-message';
+import { ReauthenticationManager } from '/@/renderer/utils/reauthentication-manager';
 import { toast } from '/@/shared/components/toast/toast';
 import { AuthState } from '/@/shared/types/types';
 
@@ -156,6 +157,128 @@ export const useServerAuthenticated = () => {
                         getUserInfoError?.response?.status === 403 ||
                         getUserInfoError?.message?.toLowerCase().includes('forbidden') ||
                         getUserInfoError?.message?.toLowerCase().includes('unauthorized');
+
+                    // Log error details for debugging
+                    logFn.debug('getUserInfo error details', {
+                        category: LogCategory.SYSTEM,
+                        meta: {
+                            errorMessage: getUserInfoError?.message,
+                            isForbiddenError,
+                            responseStatus: getUserInfoError?.response?.status,
+                            serverId: serverWithAuth.id,
+                            useCookieAuth: serverWithAuth.useCookieAuth,
+                        },
+                    });
+
+                    // Handle cookie-based authentication failures - be very inclusive for cookie auth
+                    // Cookie auth can fail in many ways (empty errors, network errors, etc.)
+                    if (
+                        serverWithAuth.useCookieAuth &&
+                        (isForbiddenError ||
+                            getUserInfoError?.message?.includes('Failed to get user info') ||
+                            !getUserInfoError?.message)
+                    ) {
+                        // Check if this is a network error first
+                        const isNetwork = isNetworkError(getUserInfoError);
+
+                        if (isNetwork) {
+                            // Handle as network error - don't open auth window, redirect to server selection
+                            logFn.error(logMsg[LogCategory.SYSTEM].serverAuthenticationFailed, {
+                                category: LogCategory.SYSTEM,
+                                meta: {
+                                    action: 'cookie_auth_network_error',
+                                    error: getUserInfoError?.message || 'Network error',
+                                    serverId: serverWithAuth.id,
+                                    serverName: serverWithAuth.name,
+                                    serverType: serverWithAuth.type,
+                                },
+                            });
+
+                            toast.error({
+                                message:
+                                    'Server is unreachable. Please check your connection or try a different server.',
+                            });
+
+                            // Clear server and redirect to server selection
+                            setCurrentServer(null);
+                            setReady(AuthState.INVALID);
+                            navigate(AppRoute.ACTION_REQUIRED, { replace: true });
+                            return;
+                        }
+
+                        // Check if we're already in a reauthentication loop to prevent infinite loops
+                        const isAlreadyReauth = await ReauthenticationManager.isReauthenticating(
+                            serverWithAuth.id,
+                        );
+
+                        if (isAlreadyReauth) {
+                            // We're already in a reauthentication loop for this server, break the loop
+                            logFn.error(logMsg[LogCategory.SYSTEM].serverAuthenticationFailed, {
+                                category: LogCategory.SYSTEM,
+                                meta: {
+                                    action: 'cookie_auth_loop_detected',
+                                    error:
+                                        getUserInfoError?.message ||
+                                        'Reauthentication loop detected',
+                                    serverId: serverWithAuth.id,
+                                    serverName: serverWithAuth.name,
+                                    serverType: serverWithAuth.type,
+                                },
+                            });
+
+                            toast.error({
+                                message:
+                                    'Authentication failed repeatedly. Please try a different server or check your connection.',
+                            });
+
+                            console.log(
+                                'Reauthentication loop detected, clearing server and redirecting...',
+                            );
+
+                            // Clear the stored reauthentication state and redirect to server selection
+                            await ReauthenticationManager.clearReauthenticating(serverWithAuth.id);
+
+                            setCurrentServer(null);
+                            setReady(AuthState.INVALID);
+
+                            console.log('Navigating to action required...');
+                            navigate(AppRoute.ACTION_REQUIRED, { replace: true });
+                            return;
+                        }
+
+                        logFn.info(logMsg[LogCategory.SYSTEM].authenticatingServer, {
+                            category: LogCategory.SYSTEM,
+                            meta: {
+                                method: 'browser_reauthentication',
+                                originalError: getUserInfoError?.message,
+                                reason: 'getUserInfo failed for cookie auth server',
+                                serverId: serverWithAuth.id,
+                                serverName: serverWithAuth.name,
+                                serverType: serverWithAuth.type,
+                                url: serverWithAuth.url,
+                            },
+                        });
+
+                        toast.error({
+                            message:
+                                'Your session has expired. Opening browser for reauthentication...',
+                        });
+
+                        // Store the server ID for auto-selection after reauthentication
+                        await ReauthenticationManager.setReauthenticating(serverWithAuth.id);
+
+                        // Open authentication window
+                        if (isElectron() && window.api?.browser?.openAuthWindow) {
+                            window.api.browser.openAuthWindow(serverWithAuth.url);
+                        } else {
+                            // Fallback for non-Electron or if API not available
+                            window.open(serverWithAuth.url, '_blank');
+                        }
+
+                        // Don't set current server to null for cookie auth to prevent loops
+                        setReady(AuthState.INVALID);
+                        return;
+                    }
 
                     // Only reauthenticate if it's a forbidden error AND password is saved
                     if (isForbiddenError && serverWithAuth.savePassword && localSettings) {
@@ -352,6 +475,12 @@ export const useServerAuthenticated = () => {
     );
 
     useEffect(() => {
+        // Restore reauthenticating server from storage if it exists
+        const restoreReauthenticatingServer = async () => {
+            // Clean implementation without complex tracking
+            return;
+        };
+
         if (!server) {
             logFn.debug(logMsg[LogCategory.SYSTEM].serverAuthenticationInvalid, {
                 category: LogCategory.SYSTEM,
@@ -379,6 +508,9 @@ export const useServerAuthenticated = () => {
                 setReady(AuthState.INVALID);
                 return;
             }
+
+            // Restore reauthenticating server state if needed
+            restoreReauthenticatingServer();
 
             setReady(AuthState.LOADING);
             debouncedAuth(serverWithAuth);

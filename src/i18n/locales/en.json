@@ -321,6 +321,8 @@
             "input_remoteUrlPlaceholder": "optional: public url for external features",
             "input_savePassword": "save password",
             "input_url": "url",
+            "input_useCookieAuth": "enable cookie-based authentication",
+            "input_useCookieAuthDescription": "enable this for servers behind Cloudflare Zero Trust or other SSO/proxy authentication. you must authenticate in your browser first before adding the server",
             "input_username": "username",
             "success": "server added successfully",
             "title": "add server"

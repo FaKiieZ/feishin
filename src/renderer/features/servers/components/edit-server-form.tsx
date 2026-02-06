@@ -7,6 +7,7 @@ import i18n from '/@/i18n/i18n';
 import { api } from '/@/renderer/api';
 import { queryClient } from '/@/renderer/lib/react-query';
 import { getServerById, useAuthStoreActions } from '/@/renderer/store';
+import { Button } from '/@/shared/components/button/button';
 import { Checkbox } from '/@/shared/components/checkbox/checkbox';
 import { Group } from '/@/shared/components/group/group';
 import { Icon } from '/@/shared/components/icon/icon';
@@ -60,6 +61,7 @@ export const EditServerForm = ({ isUpdate, onCancel, password, server }: EditSer
             savePassword: server.savePassword,
             type: server?.type,
             url: server?.url,
+            useCookieAuth: server?.useCookieAuth || false,
             username: server?.username,
         },
     });
@@ -118,6 +120,7 @@ export const EditServerForm = ({ isUpdate, onCancel, password, server }: EditSer
                         username: values.username,
                     },
                     values.type,
+                    values.useCookieAuth,
                 );
 
                 if (!data) {
@@ -159,6 +162,10 @@ export const EditServerForm = ({ isUpdate, onCancel, password, server }: EditSer
 
             if (values.preferRemoteUrl !== undefined) {
                 serverItem.preferRemoteUrl = values.preferRemoteUrl;
+            }
+
+            if (values.useCookieAuth !== undefined) {
+                serverItem.useCookieAuth = values.useCookieAuth;
             }
 
             updateServer(server.id, serverItem);
@@ -264,8 +271,44 @@ export const EditServerForm = ({ isUpdate, onCancel, password, server }: EditSer
                         context: 'password',
                         postProcess: 'titleCase',
                     })}
+                    required
                     {...form.getInputProps('password')}
                 />
+                <Group gap="xs">
+                    <Checkbox
+                        description={t('form.addServer.input', {
+                            context: 'useCookieAuthDescription',
+                            postProcess: 'sentenceCase',
+                        })}
+                        label={t('form.addServer.input', {
+                            context: 'useCookieAuth',
+                            postProcess: 'titleCase',
+                        })}
+                        {...form.getInputProps('useCookieAuth', {
+                            type: 'checkbox',
+                        })}
+                    />
+                    {form.isDirty('useCookieAuth') && <ModifiedFieldIndicator />}
+                </Group>
+                {form.values.useCookieAuth && form.values.url && (
+                    <Button
+                        leftSection={<Icon icon="externalLink" />}
+                        onClick={() => {
+                            if (isElectron() && window.api?.browser?.openAuthWindow) {
+                                window.api.browser.openAuthWindow(form.values.url);
+                            } else {
+                                // Fallback for non-Electron or if API not available
+                                window.open(form.values.url, '_blank');
+                            }
+                        }}
+                        variant="light"
+                    >
+                        {t('form.addServer.authenticateInBrowser', {
+                            defaultValue: 'Authenticate in Browser',
+                            postProcess: 'titleCase',
+                        })}
+                    </Button>
+                )}
                 {localSettings && isNavidrome && (
                     <Checkbox
                         label={t('form.addServer.input', {

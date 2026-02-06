@@ -218,6 +218,194 @@ const getAssetPath = (...paths: string[]): string => {
     return path.join(RESOURCES_PATH, ...paths);
 };
 
+const createAuthWindow = (url: string) => {
+    // Note: Web security is maintained in development mode for security reasons.
+    // CORS issues in development should be handled through the 'ignore_cors' setting
+    // rather than blanket disabling web security, which prevents XSS and CSRF attacks.
+    const authWindow = new BrowserWindow({
+        autoHideMenuBar: true,
+        height: 700,
+        parent: mainWindow || undefined,
+        webPreferences: {
+            contextIsolation: true,
+            nodeIntegration: false,
+            webSecurity: !store.get('ignore_cors'),
+        },
+        width: 900,
+    });
+
+    authWindow.loadURL(url);
+
+    // Handle load failures (server unreachable, network issues, etc.)
+    authWindow.webContents.on(
+        'did-fail-load',
+        (_event, errorCode, errorDescription, validatedURL) => {
+            console.error('Auth window failed to load:', {
+                errorCode,
+                errorDescription,
+                url: validatedURL,
+            });
+
+            // Common network error codes that indicate server is unreachable
+            const networkErrorCodes = [
+                -2, // NAME_NOT_RESOLVED
+                -106, // INTERNET_DISCONNECTED
+                -102, // CONNECTION_REFUSED
+                -21, // NETWORK_CHANGED
+                -100, // CONNECTION_CLOSED
+                -105, // NAME_RESOLUTION_FAILED
+            ];
+
+            if (networkErrorCodes.includes(errorCode)) {
+                // Server appears to be unreachable, notify renderer to redirect to server selection
+                getMainWindow()?.webContents.send('auth-failed', {
+                    errorDescription,
+                    reason: 'server_unreachable',
+                });
+
+                // Close the auth window after a short delay
+                setTimeout(() => {
+                    if (!authWindow.isDestroyed()) {
+                        authWindow.close();
+                    }
+                }, 1000);
+            }
+        },
+    );
+
+    // Close auth window when navigation to main domain happens (login success)
+    authWindow.webContents.on('did-navigate', (_, navigationUrl) => {
+        try {
+            const urlObj = new URL(url);
+            const mainDomain = urlObj.hostname;
+            const navDomain = new URL(navigationUrl).hostname;
+
+            console.log('Navigation detected:', {
+                isMainDomain: navDomain === mainDomain,
+                mainDomain,
+                navDomain,
+                navigationUrl,
+            });
+
+            // Check if we've returned to the main server domain after OAuth
+            // Be more permissive about what constitutes successful auth
+            if (
+                navDomain === mainDomain &&
+                !navigationUrl.includes('/auth/') &&
+                !navigationUrl.includes('/login') &&
+                !navigationUrl.includes('/signin') &&
+                !navigationUrl.includes('/oauth/authorize') && // Allow OAuth callback URLs
+                (navigationUrl.includes('dashboard') ||
+                    navigationUrl.includes('home') ||
+                    navigationUrl.includes('success') ||
+                    navigationUrl.includes('/app') ||
+                    navigationUrl.includes('/main') ||
+                    navigationUrl.includes('?authenticated=true') ||
+                    navigationUrl.includes('#authenticated') ||
+                    navigationUrl.includes('oauth/callback') ||
+                    navigationUrl.includes('auth/callback') ||
+                    // Allow any path that's not clearly an auth page after returning to main domain
+                    (navigationUrl !== url &&
+                        navigationUrl !== url + '/' &&
+                        !navigationUrl.endsWith('/login') &&
+                        !navigationUrl.endsWith('/signin')))
+            ) {
+                console.log('Detected successful auth navigation, sending auth-success');
+
+                // Notify renderer that auth was successful
+                getMainWindow()?.webContents.send('auth-success');
+
+                // Use a shorter delay to allow the success page to briefly display
+                setTimeout(() => {
+                    if (!authWindow.isDestroyed()) {
+                        authWindow.close();
+                    }
+                }, 500);
+            }
+        } catch (e) {
+            // Ignore URL parsing errors
+            console.error('Error in did-navigate handler:', e);
+        }
+    });
+
+    // Also listen for when the page finishes loading to detect successful auth
+    authWindow.webContents.on('did-finish-load', () => {
+        try {
+            const currentUrl = authWindow.webContents.getURL();
+            const urlObj = new URL(url);
+            const mainDomain = urlObj.hostname;
+            const currentDomain = new URL(currentUrl).hostname;
+
+            console.log('did-finish-load', {
+                currentDomain,
+                currentUrl,
+                mainDomain,
+                urlObj,
+            });
+
+            // Simplified page analysis - focus on essential checks only
+            authWindow.webContents
+                .executeJavaScript(
+                    `
+                (function() {
+                    const title = document.title.toLowerCase();
+                    const bodyText = document.body.innerText.toLowerCase();
+                    const currentUrl = window.location.href.toLowerCase();
+                    
+                    // Focus on core indicators rather than extensive heuristics
+                    const hasError = bodyText.includes('error') || title.includes('error') ||
+                                   bodyText.includes('502 bad gateway') || bodyText.includes('503 service unavailable') ||
+                                   bodyText.includes('connection refused');
+                    
+                    const hasAuth = currentUrl.includes('/dashboard') || currentUrl.includes('/app') ||
+                                  bodyText.includes('dashboard') || bodyText.includes('music') ||
+                                  bodyText.includes('library');
+                    
+                    return {
+                        hasError,
+                        hasAuth,
+                        title: document.title,
+                        url: currentUrl
+                    };
+                })();
+            `,
+                )
+                .then((pageInfo: any) => {
+                    // If the page has errors, treat as auth failure
+                    if (pageInfo.hasError) {
+                        getMainWindow()?.webContents.send('auth-failed', {
+                            errorDescription: `Server error detected: ${pageInfo.title}`,
+                            reason: 'server_error',
+                        });
+
+                        setTimeout(() => {
+                            if (!authWindow.isDestroyed()) {
+                                authWindow.close();
+                            }
+                        }, 1000);
+                        return;
+                    }
+
+                    // Check if we're on a success page or dashboard after auth
+                    if (currentDomain === mainDomain && pageInfo.hasAuth) {
+                        // Notify renderer that auth was successful
+                        getMainWindow()?.webContents.send('auth-success');
+
+                        setTimeout(() => {
+                            if (!authWindow.isDestroyed()) {
+                                authWindow.close();
+                            }
+                        }, 300);
+                    }
+                });
+        } catch (e) {
+            console.error('Error in did-finish-load handler:', e);
+        }
+    });
+
+    return authWindow;
+};
+
 export const getMainWindow = () => {
     return mainWindow;
 };
@@ -376,6 +564,14 @@ async function createWindow(first = true): Promise<void> {
         ...(nativeFrame && isWindows() && nativeFrameConfig.windows),
     });
 
+    // Handle window.open calls for cookie authentication
+    mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+        // For authentication URLs, open in a new BrowserWindow within Electron
+        // This allows cookie sharing between the auth window and main app
+        createAuthWindow(url);
+        return { action: 'deny' }; // Prevent default window.open behavior
+    });
+
     // From https://github.com/electron/electron/issues/526#issuecomment-1663959513
     const bounds = store.get('bounds') as Rectangle | undefined;
     if (bounds) {
@@ -428,6 +624,30 @@ async function createWindow(first = true): Promise<void> {
 
     ipcMain.handle('window-clear-cache', async () => {
         return mainWindow?.webContents.session.clearCache();
+    });
+
+    ipcMain.handle('window-clear-browser-data', async () => {
+        const session = mainWindow?.webContents.session;
+        if (!session) return;
+
+        // Clear storage data but preserve localStorage (server configurations)
+        await session.clearStorageData({
+            storages: [
+                'cookies',
+                'filesystem',
+                'indexdb',
+                'shadercache',
+                'websql',
+                'serviceworkers',
+                'cachestorage',
+            ],
+        });
+
+        // Also clear the cache
+        await session.clearCache();
+
+        // Clear auth cache specifically
+        await session.clearAuthCache();
     });
 
     ipcMain.handle(
@@ -487,6 +707,11 @@ async function createWindow(first = true): Promise<void> {
         mainWindow?.webContents.downloadURL(url);
     });
 
+    // Add specific handler for authentication URLs
+    ipcMain.on('open-auth-window', (_event, url: string) => {
+        createAuthWindow(url);
+    });
+
     const globalMediaKeysEnabled = store.get('global_media_hotkeys', true) as boolean;
 
     if (globalMediaKeysEnabled) {
@@ -520,6 +745,7 @@ async function createWindow(first = true): Promise<void> {
 
     mainWindow.on('closed', () => {
         ipcMain.removeHandler('window-clear-cache');
+        ipcMain.removeHandler('window-clear-browser-data');
         mainWindow = null;
     });
 
