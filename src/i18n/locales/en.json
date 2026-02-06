@@ -128,6 +128,7 @@
         "releaseType": "release type",
         "refresh": "refresh",
         "reload": "reload",
+        "rename": "rename",
         "reset": "reset",
         "resetToDefault": "reset to default",
         "restartRequired": "restart required",
@@ -137,7 +138,6 @@
         "saveAndReplace": "save and replace",
         "saveAs": "save as",
         "search": "search",
-        "setting": "setting",
         "setting_one": "setting",
         "setting_other": "settings",
         "slower": "slower",
@@ -273,6 +273,7 @@
         "releaseYear": "release year",
         "search": "search",
         "songCount": "song count",
+        "sortName": "sort name",
         "title": "title",
         "toYear": "to year",
         "trackNumber": "track",
@@ -419,13 +420,17 @@
         "albumArtistDetail": {
             "about": "About {{artist}}",
             "appearsOn": "appears on",
+            "favoriteSongs": "favorite songs",
             "groupingTypeAll": "all release types",
             "groupingTypePrimary": "primary release types",
             "recentReleases": "recent releases",
             "viewDiscography": "view discography",
             "relatedArtists": "related $t(entity.artist, {\"count\": 2})",
             "topSongs": "top songs",
+            "topSongsCommunity": "community",
             "topSongsFrom": "top songs from {{title}}",
+            "topSongsPersonal": "personal",
+            "favoriteSongsFrom": "favorite songs from {{title}}",
             "viewAll": "view all",
             "viewAllTracks": "view all $t(entity.track, {\"count\": 2})"
         },
@@ -445,8 +450,17 @@
         "radioList": {
             "title": "radio stations"
         },
+        "releasenotes": {
+            "commitsSinceStable": "commits since {{stable}}",
+            "noNewCommits": "no new commits in this range",
+            "noStableReleaseToCompare": "no stable release available to compare with"
+        },
         "favorites": {
             "title": "$t(entity.favorite, {\"count\": 2})"
+        },
+        "windowBar": {
+            "paused": "(Paused) ",
+            "privateMode": "(Private mode)"
         },
         "appMenu": {
             "collapseSidebar": "collapse sidebar",
@@ -561,6 +575,10 @@
         "playlistList": {
             "title": "$t(entity.playlist, {\"count\": 2})"
         },
+        "collections": {
+            "overrideExisting": "override existing",
+            "saveAsCollection": "save as collection"
+        },
         "setting": {
             "advanced": "advanced",
             "analytics": "analytics",
@@ -589,6 +607,7 @@
         "sidebar": {
             "albumArtists": "$t(entity.albumArtist, {\"count\": 2})",
             "albums": "$t(entity.album, {\"count\": 2})",
+            "collections": "collections",
             "artists": "$t(entity.artist, {\"count\": 2})",
             "favorites": "$t(entity.favorite, {\"count\": 2})",
             "folders": "$t(entity.folder, {\"count\": 2})",
@@ -656,7 +675,7 @@
         "standardTags": "standard tags",
         "customTags": "custom tags"
     },
-        "releaseType": {
+    "releaseType": {
         "primary": {
             "album": "$t(entity.album, {\"count\": 1})",
             "broadcast": "broadcast",
@@ -733,10 +752,11 @@
         "customFontPath_description": "sets the path to the custom font to use for the application",
         "customFontPath": "custom font path",
         "disableAutomaticUpdates": "disable automatic updates",
+        "releaseChannel_optionAlpha": "alpha (nightly)",
         "releaseChannel_optionBeta": "beta",
         "releaseChannel_optionLatest": "latest",
         "releaseChannel": "release channel",
-        "releaseChannel_description": "choose between stable releases or beta releases for automatic updates",
+        "releaseChannel_description": "choose between stable, beta, or alpha (nightly) releases for automatic updates",
         "disableLibraryUpdateOnStartup": "disable checking for new versions on startup",
         "discordApplicationId_description": "the application id for {{discord}} rich presence (defaults to {{defaultId}})",
         "discordApplicationId": "{{discord}} application id",
@@ -924,6 +944,10 @@
         "showLyricsInSidebar": "show lyrics in player sidebar",
         "showRatings_description": "controls if the star ratings feature shows up in the interface",
         "showRatings": "show star ratings",
+        "blurExplicitImages": "blur explicit images",
+        "blurExplicitImages_description": "album and song artwork tagged as explicit will be blurred",
+        "enableGridMultiSelect": "enable grid multi-select",
+        "enableGridMultiSelect_description": "when enabled, allows selecting multiple items in grid views. when disabled, clicking grid item images will navigate to the item page",
         "showVisualizerInSidebar_description": "a panel will be added to the player sidebar that displays the visualizer",
         "showVisualizerInSidebar": "show visualizer in player sidebar",
         "combinedLyricsAndVisualizer_description": "combine lyrics and visualizer into the same panel",
@@ -967,6 +991,11 @@
         "sidebarConfiguration": "sidebar configuration",
         "sidebarPlaylistList_description": "show or hide the playlist list in the sidebar",
         "sidebarPlaylistList": "sidebar playlist list",
+        "sidebarPlaylistSorting_description": "allows manual playlist sorting in the sidebar using drag and drop instead of the default server order",
+        "sidebarPlaylistSorting": "sidebar playlist sorting",
+        "sidebarPlaylistListFilterRegex_description": "hide playlists in the sidebar that match this regular expression",
+        "sidebarPlaylistListFilterRegex_placeholder": "e.g. ^Daily Mix.*",
+        "sidebarPlaylistListFilterRegex": "playlist filter regex",
         "sidePlayQueueStyle_description": "sets the style of the side play queue",
         "sidePlayQueueStyle_optionAttached": "attached",
         "sidePlayQueueStyle_optionDetached": "detached",
@@ -1077,6 +1106,7 @@
                 "alternateRowColors": "alternate row colors",
                 "horizontalBorders": "row borders",
                 "rowHoverHighlight": "row hover highlight",
+                "showHeader": "show header",
                 "verticalBorders": "column borders"
             },
             "label": {

@@ -76,6 +76,13 @@ export type QueueSong = Song & {
     _uniqueId: string;
 };
 
+export interface SavedCollection {
+    filterQueryString: string;
+    id: string;
+    name: string;
+    type: LibraryItem.ALBUM | LibraryItem.SONG;
+}
+
 export type ServerListItem = {
     features?: ServerFeatures;
     id: string;
@@ -180,6 +187,7 @@ export type Album = {
     isCompilation: boolean | null;
     lastPlayedAt: null | string;
     mbzId: null | string;
+    mbzReleaseGroupId: null | string;
     name: string;
     originalDate: null | string;
     originalYear: null | number;
@@ -193,6 +201,7 @@ export type Album = {
     size: null | number;
     songCount: null | number;
     songs?: Song[];
+    sortName: string;
     tags: null | Record<string, string[]>;
     updatedAt: string;
     userFavorite: boolean;
@@ -393,6 +402,7 @@ export type Song = {
     releaseYear: null | number;
     sampleRate: null | number;
     size: number;
+    sortName: string;
     tags: null | Record<string, string[]>;
     trackNumber: number;
     trackSubtitle: null | string;
@@ -465,6 +475,7 @@ export enum AlbumListSort {
     RECENTLY_PLAYED = 'recentlyPlayed',
     RELEASE_DATE = 'releaseDate',
     SONG_COUNT = 'songCount',
+    SORT_NAME = 'sortName',
     YEAR = 'year',
 }
 
@@ -519,6 +530,7 @@ export const albumListSortMap: AlbumListSortMap = {
         recentlyPlayed: undefined,
         releaseDate: JFAlbumListSort.RELEASE_DATE,
         songCount: undefined,
+        sortName: JFAlbumListSort.NAME,
         year: undefined,
     },
     navidrome: {
@@ -538,6 +550,7 @@ export const albumListSortMap: AlbumListSortMap = {
         // Recent versions of Navidrome support release date, but fallback to year for now
         releaseDate: NDAlbumListSort.YEAR,
         songCount: NDAlbumListSort.SONG_COUNT,
+        sortName: NDAlbumListSort.NAME,
         year: NDAlbumListSort.YEAR,
     },
     subsonic: {
@@ -556,6 +569,7 @@ export const albumListSortMap: AlbumListSortMap = {
         recentlyPlayed: undefined,
         releaseDate: undefined,
         songCount: undefined,
+        sortName: undefined,
         year: undefined,
     },
 };
@@ -579,6 +593,7 @@ export enum SongListSort {
     RECENTLY_ADDED = 'recentlyAdded',
     RECENTLY_PLAYED = 'recentlyPlayed',
     RELEASE_DATE = 'releaseDate',
+    SORT_NAME = 'sortName',
     YEAR = 'year',
 }
 
@@ -643,6 +658,7 @@ export const songListSortMap: SongListSortMap = {
         recentlyAdded: JFSongListSort.RECENTLY_ADDED,
         recentlyPlayed: JFSongListSort.RECENTLY_PLAYED,
         releaseDate: JFSongListSort.RELEASE_DATE,
+        sortName: JFSongListSort.NAME,
         year: undefined,
     },
     navidrome: {
@@ -664,6 +680,7 @@ export const songListSortMap: SongListSortMap = {
         recentlyAdded: NDSongListSort.RECENTLY_ADDED,
         recentlyPlayed: NDSongListSort.PLAY_DATE,
         releaseDate: undefined,
+        sortName: NDSongListSort.TITLE,
         year: NDSongListSort.YEAR,
     },
     subsonic: {
@@ -685,6 +702,7 @@ export const songListSortMap: SongListSortMap = {
         recentlyAdded: undefined,
         recentlyPlayed: undefined,
         releaseDate: undefined,
+        sortName: undefined,
         year: undefined,
     },
 };
@@ -1300,6 +1318,7 @@ export type TopSongListQuery = {
     artist: string;
     artistId: string;
     limit?: number;
+    type?: 'community' | 'personal';
 };
 
 // Top Songs List

@@ -28,6 +28,7 @@ import {
     formatRating,
 } from '/@/renderer/utils/format';
 import { SEPARATOR_STRING } from '/@/shared/api/utils';
+import { ExplicitIndicator } from '/@/shared/components/explicit-indicator/explicit-indicator';
 import { Group } from '/@/shared/components/group/group';
 import { Icon } from '/@/shared/components/icon/icon';
 import { Separator } from '/@/shared/components/separator/separator';
@@ -38,25 +39,31 @@ import {
     Album,
     AlbumArtist,
     Artist,
+    Genre,
     LibraryItem,
     Playlist,
     Song,
 } from '/@/shared/types/domain-types';
 import { DragOperation, DragTarget } from '/@/shared/types/drag-and-drop';
+import { stringToColor } from '/@/shared/utils/string-to-color';
 
 export type DataRow = {
     align?: 'center' | 'end' | 'start';
-    format: (data: Album | AlbumArtist | Artist | Playlist | Song) => null | ReactNode | string;
+    format: (
+        data: Album | AlbumArtist | Artist | Genre | Playlist | Song,
+    ) => null | ReactNode | string;
     id: string;
     isMuted?: boolean;
 };
 
 export interface ItemCardProps {
     controls?: ItemControls;
-    data: Album | AlbumArtist | Artist | Playlist | Song | undefined;
+    data: Album | AlbumArtist | Artist | Genre | Playlist | Song | undefined;
     enableDrag?: boolean;
     enableExpansion?: boolean;
+    enableMultiSelect?: boolean;
     enableNavigation?: boolean;
+    imageAsLink?: boolean;
     internalState?: ItemListStateActions;
     isRound?: boolean;
     itemType: LibraryItem;
@@ -70,7 +77,9 @@ export const ItemCard = ({
     data,
     enableDrag,
     enableExpansion,
+    enableMultiSelect,
     enableNavigation = true,
+    imageAsLink,
     internalState,
     isRound,
     itemType,
@@ -90,7 +99,9 @@ export const ItemCard = ({
                     data={data}
                     enableDrag={enableDrag}
                     enableExpansion={enableExpansion}
+                    enableMultiSelect={enableMultiSelect}
                     enableNavigation={enableNavigation}
+                    imageAsLink={imageAsLink}
                     imageUrl={imageUrl}
                     internalState={internalState}
                     isRound={isRound}
@@ -107,7 +118,9 @@ export const ItemCard = ({
                     data={data}
                     enableDrag={enableDrag}
                     enableExpansion={enableExpansion}
+                    enableMultiSelect={enableMultiSelect}
                     enableNavigation={enableNavigation}
+                    imageAsLink={imageAsLink}
                     imageUrl={imageUrl}
                     internalState={internalState}
                     isRound={isRound}
@@ -126,6 +139,7 @@ export const ItemCard = ({
                     enableDrag={enableDrag}
                     enableExpansion={enableExpansion}
                     enableNavigation={enableNavigation}
+                    imageAsLink={imageAsLink}
                     imageUrl={imageUrl}
                     internalState={internalState}
                     isRound={isRound}
@@ -142,6 +156,7 @@ export interface ItemCardDerivativeProps extends Omit<ItemCardProps, 'type'> {
     controls?: ItemControls;
     enableExpansion?: boolean;
     enableNavigation?: boolean;
+    imageAsLink?: boolean;
     imageUrl: string | undefined;
     internalState?: ItemListStateActions;
     rows: DataRow[];
@@ -153,7 +168,9 @@ const CompactItemCard = ({
     data,
     enableDrag,
     enableExpansion,
+    enableMultiSelect,
     enableNavigation,
+    imageAsLink,
     internalState,
     isRound,
     itemType,
@@ -173,29 +190,29 @@ const CompactItemCard = ({
             return [];
         }
 
-        const draggedItems = getDraggedItems(data, internalState);
+        const draggedItems = getDraggedItems(data, internalState, enableMultiSelect !== false);
         return draggedItems.map((item) => item.id);
-    }, [data, internalState]);
+    }, [data, internalState, enableMultiSelect]);
 
     const getItem = useCallback(() => {
         if (!data) {
             return [];
         }
 
-        const draggedItems = getDraggedItems(data, internalState);
+        const draggedItems = getDraggedItems(data, internalState, enableMultiSelect !== false);
         return draggedItems;
-    }, [data, internalState]);
+    }, [data, internalState, enableMultiSelect]);
 
     const onDragStart = useCallback(() => {
         if (!data) {
             return;
         }
 
-        const draggedItems = getDraggedItems(data, internalState);
+        const draggedItems = getDraggedItems(data, internalState, enableMultiSelect !== false);
         if (internalState) {
             internalState.setDragging(draggedItems);
         }
-    }, [data, internalState]);
+    }, [data, internalState, enableMultiSelect]);
 
     const onDrop = useCallback(() => {
         if (internalState) {
@@ -329,15 +346,31 @@ const CompactItemCard = ({
 
         const imageContainerContent = (
             <>
-                <ItemImage
-                    className={clsx(styles.image, {
-                        [styles.isRound]: isRound,
-                    })}
-                    id={data?.imageId}
-                    itemType={itemType}
-                    src={(data as Album | AlbumArtist | Playlist | Song)?.imageUrl}
-                    type="itemCard"
-                />
+                {itemType === LibraryItem.GENRE &&
+                data &&
+                'name' in data &&
+                typeof (data as Genre).name === 'string' ? (
+                    <GenreImagePlaceholder
+                        className={clsx(styles.image, styles.genrePlaceholder, {
+                            [styles.isRound]: isRound,
+                        })}
+                        name={(data as Genre).name}
+                    />
+                ) : (
+                    <ItemImage
+                        className={clsx(styles.image, {
+                            [styles.isRound]: isRound,
+                        })}
+                        enableDebounce={false}
+                        explicitStatus={
+                            'explicitStatus' in data && data ? data.explicitStatus : null
+                        }
+                        id={data?.imageId}
+                        itemType={itemType}
+                        src={(data as Album | AlbumArtist | Playlist | Song)?.imageUrl}
+                        type="itemCard"
+                    />
+                )}
                 {isFavorite && <div className={styles.favoriteBadge} />}
                 {hasRating && <div className={styles.ratingBadge}>{userRating}</div>}
                 <AnimatePresence>
@@ -380,7 +413,7 @@ const CompactItemCard = ({
                 })}
                 ref={ref}
             >
-                {enableNavigation && navigationPath && !internalState ? (
+                {enableNavigation && navigationPath && (imageAsLink ?? !internalState) ? (
                     <Link
                         className={imageContainerClassName}
                         draggable={false}
@@ -441,6 +474,7 @@ const DefaultItemCard = ({
     data,
     enableExpansion,
     enableNavigation,
+    imageAsLink,
     internalState,
     isRound,
     itemType,
@@ -551,13 +585,29 @@ const DefaultItemCard = ({
 
         const imageContainerContent = (
             <>
-                <ItemImage
-                    className={clsx(styles.image, { [styles.isRound]: isRound })}
-                    id={data?.imageId}
-                    itemType={itemType}
-                    src={(data as Album | AlbumArtist | Playlist | Song)?.imageUrl}
-                    type="itemCard"
-                />
+                {itemType === LibraryItem.GENRE &&
+                data &&
+                'name' in data &&
+                typeof (data as Genre).name === 'string' ? (
+                    <GenreImagePlaceholder
+                        className={clsx(styles.image, styles.genrePlaceholder, {
+                            [styles.isRound]: isRound,
+                        })}
+                        name={(data as Genre).name}
+                    />
+                ) : (
+                    <ItemImage
+                        className={clsx(styles.image, { [styles.isRound]: isRound })}
+                        enableDebounce={false}
+                        explicitStatus={
+                            'explicitStatus' in data && data ? data.explicitStatus : null
+                        }
+                        id={data?.imageId}
+                        itemType={itemType}
+                        src={(data as Album | AlbumArtist | Playlist | Song)?.imageUrl}
+                        type="itemCard"
+                    />
+                )}
                 {isFavorite && <div className={styles.favoriteBadge} />}
                 {hasRating && <div className={styles.ratingBadge}>{userRating}</div>}
                 <AnimatePresence>
@@ -581,7 +631,7 @@ const DefaultItemCard = ({
                     [styles.selected]: isSelected,
                 })}
             >
-                {enableNavigation && navigationPath && !internalState ? (
+                {enableNavigation && navigationPath && (imageAsLink ?? !internalState) ? (
                     <Link
                         className={imageContainerClassName}
                         draggable={false}
@@ -657,7 +707,9 @@ const PosterItemCard = ({
     data,
     enableDrag,
     enableExpansion,
+    enableMultiSelect,
     enableNavigation,
+    imageAsLink,
     internalState,
     isRound,
     itemType,
@@ -677,29 +729,29 @@ const PosterItemCard = ({
             return [];
         }
 
-        const draggedItems = getDraggedItems(data, internalState);
+        const draggedItems = getDraggedItems(data, internalState, enableMultiSelect !== false);
         return draggedItems.map((item) => item.id);
-    }, [data, internalState]);
+    }, [data, internalState, enableMultiSelect]);
 
     const getItem = useCallback(() => {
         if (!data) {
             return [];
         }
 
-        const draggedItems = getDraggedItems(data, internalState);
+        const draggedItems = getDraggedItems(data, internalState, enableMultiSelect !== false);
         return draggedItems;
-    }, [data, internalState]);
+    }, [data, internalState, enableMultiSelect]);
 
     const onDragStart = useCallback(() => {
         if (!data) {
             return;
         }
 
-        const draggedItems = getDraggedItems(data, internalState);
+        const draggedItems = getDraggedItems(data, internalState, enableMultiSelect !== false);
         if (internalState) {
             internalState.setDragging(draggedItems);
         }
-    }, [data, internalState]);
+    }, [data, internalState, enableMultiSelect]);
 
     const onDrop = useCallback(() => {
         if (internalState) {
@@ -833,13 +885,29 @@ const PosterItemCard = ({
 
         const imageContainerContent = (
             <>
-                <ItemImage
-                    className={clsx(styles.image, { [styles.isRound]: isRound })}
-                    id={(data as { imageId: string })?.imageId}
-                    itemType={itemType}
-                    src={(data as { imageUrl: string })?.imageUrl}
-                    type="itemCard"
-                />
+                {itemType === LibraryItem.GENRE &&
+                data &&
+                'name' in data &&
+                typeof (data as Genre).name === 'string' ? (
+                    <GenreImagePlaceholder
+                        className={clsx(styles.image, styles.genrePlaceholder, {
+                            [styles.isRound]: isRound,
+                        })}
+                        name={(data as Genre).name}
+                    />
+                ) : (
+                    <ItemImage
+                        className={clsx(styles.image, { [styles.isRound]: isRound })}
+                        enableDebounce={false}
+                        explicitStatus={
+                            'explicitStatus' in data && data ? data.explicitStatus : null
+                        }
+                        id={(data as { imageId: string })?.imageId}
+                        itemType={itemType}
+                        src={(data as { imageUrl: string })?.imageUrl}
+                        type="itemCard"
+                    />
+                )}
                 {isFavorite && <div className={styles.favoriteBadge} />}
                 {hasRating && <div className={styles.ratingBadge}>{userRating}</div>}
                 <AnimatePresence>
@@ -866,7 +934,7 @@ const PosterItemCard = ({
                 })}
                 ref={ref}
             >
-                {enableNavigation && navigationPath && !internalState ? (
+                {enableNavigation && navigationPath && (imageAsLink ?? !internalState) ? (
                     <Link
                         className={imageContainerClassName}
                         draggable={false}
@@ -952,6 +1020,7 @@ export const getDataRows = (type?: 'compact' | 'default' | 'poster'): DataRow[] 
     return [
         {
             format: (data) => {
+                const explicitStatus = 'explicitStatus' in data ? data.explicitStatus : null;
                 if ('name' in data && data.name) {
                     if ('id' in data && data.id) {
                         if ('_itemType' in data) {
@@ -964,6 +1033,7 @@ export const getDataRows = (type?: 'compact' | 'default' | 'poster'): DataRow[] 
                                                 albumId: data.id,
                                             })}
                                         >
+                                            <ExplicitIndicator explicitStatus={explicitStatus} />
                                             {data.name}
                                         </Link>
                                     );
@@ -977,6 +1047,18 @@ export const getDataRows = (type?: 'compact' | 'default' | 'poster'): DataRow[] 
                                                     albumArtistId: data.id,
                                                 },
                                             )}
+                                        >
+                                            <ExplicitIndicator explicitStatus={explicitStatus} />
+                                            {data.name}
+                                        </Link>
+                                    );
+                                case LibraryItem.GENRE:
+                                    return (
+                                        <Link
+                                            state={{ item: data }}
+                                            to={generatePath(AppRoute.LIBRARY_GENRES_DETAIL, {
+                                                genreId: data.id,
+                                            })}
                                         >
                                             {data.name}
                                         </Link>
@@ -993,11 +1075,21 @@ export const getDataRows = (type?: 'compact' | 'default' | 'poster'): DataRow[] 
                                         </Link>
                                     );
                                 default:
-                                    return data.name;
+                                    return (
+                                        <>
+                                            <ExplicitIndicator explicitStatus={explicitStatus} />
+                                            {data.name}
+                                        </>
+                                    );
                             }
                         }
                     }
-                    return data.name;
+                    return (
+                        <>
+                            <ExplicitIndicator explicitStatus={explicitStatus} />
+                            {data.name}
+                        </>
+                    );
                 }
                 return '';
             },
@@ -1209,7 +1301,7 @@ export const getDataRowsCount = () => {
     return getDataRows().length;
 };
 
-const getImageUrl = (data: Album | AlbumArtist | Artist | Playlist | Song | undefined) => {
+const getImageUrl = (data: Album | AlbumArtist | Artist | Genre | Playlist | Song | undefined) => {
     if (data && 'imageUrl' in data) {
         return data.imageUrl || undefined;
     }
@@ -1217,8 +1309,23 @@ const getImageUrl = (data: Album | AlbumArtist | Artist | Playlist | Song | unde
     return undefined;
 };
 
+const GenreImagePlaceholder = ({ className, name }: { className?: string; name: string }) => {
+    const { color, isLight } = useMemo(() => stringToColor(name), [name]);
+    return (
+        <div
+            className={className}
+            style={{
+                backgroundColor: color,
+                color: isLight ? '#000' : '#fff',
+            }}
+        >
+            <span className={styles.genrePlaceholderText}>{name}</span>
+        </div>
+    );
+};
+
 const getItemNavigationPath = (
-    data: Album | AlbumArtist | Artist | Playlist | Song | undefined,
+    data: Album | AlbumArtist | Artist | Genre | Playlist | Song | undefined,
     itemType: LibraryItem,
 ): null | string => {
     if (!data || !('id' in data) || !data.id) {
@@ -1237,7 +1344,7 @@ const ItemCardRow = memo(
         row,
         type,
     }: {
-        data: Album | AlbumArtist | Artist | Playlist | Song | undefined;
+        data: Album | AlbumArtist | Artist | Genre | Playlist | Song | undefined;
         index: number;
         row: DataRow;
         type?: 'compact' | 'default' | 'poster';

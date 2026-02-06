@@ -1,0 +1,8 @@
+{
+    "action": {
+        "addToFavorites": "tilføj til $t(entity.favorite, {\"count\": 2})",
+        "addToPlaylist": "tilføj til $t(entity.playlist, {\"count\": 1})",
+        "addOrRemoveFromSelection": "tilføj eller fjern fra valg",
+        "selectAll": "vælge alt"
+    }
+}

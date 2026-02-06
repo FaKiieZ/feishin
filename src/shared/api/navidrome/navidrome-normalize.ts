@@ -299,6 +299,7 @@ const normalizeSong = (
         releaseYear: item.year || null,
         sampleRate: item.sampleRate || null,
         size: item.size,
+        sortName: item.orderTitle,
         tags: item.tags || null,
         trackNumber: item.trackNumber,
         trackSubtitle: item.tags?.subtitle ? item.tags.subtitle.join(' · ') : null,
@@ -393,6 +394,7 @@ const normalizeAlbum = (
         isCompilation: item.compilation,
         lastPlayedAt: normalizePlayDate(item),
         mbzId: item.mbzAlbumId || null,
+        mbzReleaseGroupId: item.mbzReleaseGroupId || null,
         name: item.name,
         originalDate: originalDate.date,
         originalYear: originalDate.year,
@@ -405,6 +407,7 @@ const normalizeAlbum = (
         songs: item.songs
             ? item.songs.map((song) => normalizeSong(song, server, pathReplace, pathReplaceWith))
             : undefined,
+        sortName: item.orderAlbumName,
         tags: item.tags || null,
         updatedAt: item.updatedAt,
         userFavorite: item.starred || false,

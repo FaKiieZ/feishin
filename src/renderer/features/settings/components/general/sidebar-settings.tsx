@@ -1,4 +1,4 @@
-import { ChangeEvent, memo } from 'react';
+import { ChangeEvent, memo, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { SidebarReorder } from '/@/renderer/features/settings/components/general/sidebar-reorder';
@@ -8,6 +8,8 @@ import {
 } from '/@/renderer/features/settings/components/settings-section';
 import { useGeneralSettings, useSettingsStoreActions } from '/@/renderer/store';
 import { Switch } from '/@/shared/components/switch/switch';
+import { TextInput } from '/@/shared/components/text-input/text-input';
+import { useDebouncedCallback } from '/@/shared/hooks/use-debounced-callback';
 
 export const SidebarSettings = memo(() => {
     const { t } = useTranslation();
@@ -22,6 +24,14 @@ export const SidebarSettings = memo(() => {
         });
     };
 
+    const handleSetSidebarPlaylistSorting = (e: ChangeEvent<HTMLInputElement>) => {
+        setSettings({
+            general: {
+                sidebarPlaylistSorting: e.target.checked,
+            },
+        });
+    };
+
     const handleSetSidebarCollapsedNavigation = (e: ChangeEvent<HTMLInputElement>) => {
         setSettings({
             general: {
@@ -29,6 +39,22 @@ export const SidebarSettings = memo(() => {
             },
         });
     };
+
+    const [localFilterRegex, setLocalFilterRegex] = useState(
+        settings.sidebarPlaylistListFilterRegex,
+    );
+
+    useEffect(() => {
+        setLocalFilterRegex(settings.sidebarPlaylistListFilterRegex);
+    }, [settings.sidebarPlaylistListFilterRegex]);
+
+    const debouncedSetFilterRegex = useDebouncedCallback((value: string) => {
+        setSettings({
+            general: {
+                sidebarPlaylistListFilterRegex: value,
+            },
+        });
+    }, 500);
 
     const options: SettingOption[] = [
         {
@@ -43,6 +69,39 @@ export const SidebarSettings = memo(() => {
                 postProcess: 'sentenceCase',
             }),
             title: t('setting.sidebarPlaylistList', { postProcess: 'sentenceCase' }),
+        },
+        {
+            control: (
+                <TextInput
+                    onChange={(e) => {
+                        const value = e.currentTarget.value;
+                        setLocalFilterRegex(value);
+                        debouncedSetFilterRegex(value);
+                    }}
+                    placeholder={t('setting.sidebarPlaylistListFilterRegex_placeholder', {
+                        postProcess: 'sentenceCase',
+                    })}
+                    value={localFilterRegex}
+                />
+            ),
+            description: t('setting.sidebarPlaylistListFilterRegex', {
+                context: 'description',
+                postProcess: 'sentenceCase',
+            }),
+            title: t('setting.sidebarPlaylistListFilterRegex', { postProcess: 'sentenceCase' }),
+        },
+        {
+            control: (
+                <Switch
+                    checked={settings.sidebarPlaylistSorting}
+                    onChange={handleSetSidebarPlaylistSorting}
+                />
+            ),
+            description: t('setting.sidebarPlaylistSorting', {
+                context: 'description',
+                postProcess: 'sentenceCase',
+            }),
+            title: t('setting.sidebarPlaylistSorting', { postProcess: 'sentenceCase' }),
         },
         {
             control: (

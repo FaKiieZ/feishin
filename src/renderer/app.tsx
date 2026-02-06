@@ -11,6 +11,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
 import i18n from '/@/i18n/i18n';
 import { WebAudioContext } from '/@/renderer/features/player/context/webaudio-context';
+import { useCheckForUpdates } from '/@/renderer/hooks/use-check-for-updates';
 import { useSyncSettingsToMain } from '/@/renderer/hooks/use-sync-settings-to-main';
 import { AppRouter } from '/@/renderer/router/app-router';
 import { useCssSettings, useHotkeySettings, useLanguage } from '/@/renderer/store';
@@ -40,6 +41,7 @@ export const App = () => {
     const cssRef = useRef<HTMLStyleElement | null>(null);
 
     useSyncSettingsToMain();
+    useCheckForUpdates();
 
     // Clean up any stored reauthenticating server ID on app startup to prevent loops
     useEffect(() => {

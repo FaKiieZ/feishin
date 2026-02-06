@@ -244,6 +244,10 @@ export const sortSongList = (songs: Song[], sortBy: SongListSort, sortOrder: Sor
             results = orderBy(results, ['releaseDate'], [order]);
             break;
 
+        case SongListSort.SORT_NAME:
+            results = orderBy(results, [(v) => v.sortName ?? v.name], [order]);
+            break;
+
         case SongListSort.YEAR:
             results = orderBy(
                 results,
@@ -427,18 +431,32 @@ export const sortAlbumList = (albums: Album[], sortBy: AlbumListSort, sortOrder:
                             return new Date(v.originalDate).getTime();
                         }
 
-                        // Fallback to the first day of the release year
+                        // Fallback to the first day of the original year
                         if (v.originalYear) {
                             return new Date(v.originalYear, 0, 1).getTime();
                         }
                         return 0;
                     },
+                    (v) => {
+                        if (v.releaseDate) {
+                            return new Date(v.releaseDate).getTime();
+                        }
+
+                        // Fallback to the first day of the release year
+                        if (v.releaseYear) {
+                            return new Date(v.releaseYear, 0, 1).getTime();
+                        }
+                        return 0;
+                    },
                 ],
-                [order],
+                [order, order],
             );
             break;
         case AlbumListSort.SONG_COUNT:
             results = orderBy(results, ['songCount'], [order]);
+            break;
+        case AlbumListSort.SORT_NAME:
+            results = orderBy(results, [(v) => v.sortName ?? v.name], [order]);
             break;
         case AlbumListSort.YEAR:
             results = orderBy(results, ['releaseYear'], [order]);

@@ -20,6 +20,7 @@ import {
     PlayTooltip,
 } from '/@/renderer/features/shared/components/play-button-group';
 import { usePlayButtonBehavior } from '/@/renderer/store';
+import { ExplicitIndicator } from '/@/shared/components/explicit-indicator/explicit-indicator';
 import { Icon } from '/@/shared/components/icon/icon';
 import { Text } from '/@/shared/components/text/text';
 import { Folder, LibraryItem, QueueSong } from '/@/shared/types/domain-types';
@@ -103,6 +104,9 @@ export const DefaultTitleCombinedColumn = (props: ItemTableListInnerColumn) => {
                 >
                     <ItemImage
                         containerClassName={styles.image}
+                        enableDebounce={true}
+                        enableViewport={false}
+                        explicitStatus={item?.explicitStatus}
                         id={item?.imageId}
                         itemType={item?._itemType}
                         src={item?.imageUrl}
@@ -138,6 +142,7 @@ export const DefaultTitleCombinedColumn = (props: ItemTableListInnerColumn) => {
                     })}
                 >
                     <Text className={styles.title} isNoSelect size="md" {...titleLinkProps}>
+                        <ExplicitIndicator explicitStatus={item?.explicitStatus} />
                         {item.name as string}
                     </Text>
                     <div className={styles.artists}>
@@ -242,6 +247,7 @@ export const QueueSongTitleCombinedColumn = (props: ItemTableListInnerColumn) =>
                 >
                     <ItemImage
                         containerClassName={styles.image}
+                        explicitStatus={item?.explicitStatus}
                         id={item?.imageId}
                         itemType={item?._itemType}
                         serverId={item?._serverId}
@@ -287,6 +293,7 @@ export const QueueSongTitleCombinedColumn = (props: ItemTableListInnerColumn) =>
                         size="md"
                         {...titleLinkProps}
                     >
+                        <ExplicitIndicator explicitStatus={song?.explicitStatus} />
                         {row.name as string}
                         {song?.trackSubtitle && props.itemType !== LibraryItem.QUEUE_SONG && (
                             <Text

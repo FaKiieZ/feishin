@@ -1,6 +1,7 @@
 import isElectron from 'is-electron';
 import mergeWith from 'lodash/mergeWith';
 import { nanoid } from 'nanoid';
+import { useMemo } from 'react';
 import { generatePath } from 'react-router';
 import { z } from 'zod';
 import { devtools, persist, subscribeWithSelector } from 'zustand/middleware';
@@ -26,7 +27,7 @@ import { FontValueSchema } from '/@/renderer/types/fonts';
 import { randomString } from '/@/renderer/utils';
 import { sanitizeCss } from '/@/renderer/utils/sanitize';
 import { AppTheme } from '/@/shared/themes/app-theme-types';
-import { LibraryItem, LyricSource } from '/@/shared/types/domain-types';
+import { LibraryItem, LyricSource, SavedCollection } from '/@/shared/types/domain-types';
 import {
     FontType,
     ItemListKey,
@@ -76,6 +77,7 @@ const HomeItemSchema = z.enum([
 const ArtistItemSchema = z.enum([
     'biography',
     'compilations',
+    'favoriteSongs',
     'recentAlbums',
     'similarArtists',
     'topSongs',
@@ -154,6 +156,13 @@ const SideQueueTypeSchema = z.enum(['sideDrawerQueue', 'sideQueue']);
 
 const SidebarPanelTypeSchema = z.enum(['queue', 'lyrics', 'visualizer']);
 
+const CollectionSchema = z.object({
+    filterQueryString: z.string(),
+    id: z.string(),
+    name: z.string(),
+    type: z.enum([LibraryItem.ALBUM, LibraryItem.SONG]),
+});
+
 const SidebarItemTypeSchema = z.object({
     disabled: z.boolean(),
     id: z.string(),
@@ -190,6 +199,7 @@ const ItemTableListPropsSchema = z.object({
     autoFitColumns: z.boolean(),
     columns: z.array(ItemTableListColumnConfigSchema),
     enableAlternateRowColors: z.boolean(),
+    enableHeader: z.boolean(),
     enableHorizontalBorders: z.boolean(),
     enableRowHoverHighlight: z.boolean(),
     enableVerticalBorders: z.boolean(),
@@ -406,9 +416,12 @@ export const GeneralSettingsSchema = z.object({
     artistItems: z.array(SortableItemSchema(ArtistItemSchema)),
     artistRadioCount: z.number(),
     artistReleaseTypeItems: z.array(SortableItemSchema(ArtistReleaseTypeItemSchema)),
+    blurExplicitImages: z.boolean(),
     buttonSize: z.number(),
+    collections: z.array(CollectionSchema),
     combinedLyricsAndVisualizer: z.boolean(),
     disabledContextMenu: z.record(z.string(), z.boolean()),
+    enableGridMultiSelect: z.boolean(),
     externalLinks: z.boolean(),
     followCurrentSong: z.boolean(),
     followSystemTheme: z.boolean(),
@@ -443,6 +456,8 @@ export const GeneralSettingsSchema = z.object({
     sidebarItems: z.array(SidebarItemTypeSchema),
     sidebarPanelOrder: z.array(SidebarPanelTypeSchema),
     sidebarPlaylistList: z.boolean(),
+    sidebarPlaylistListFilterRegex: z.string(),
+    sidebarPlaylistSorting: z.boolean(),
     sideQueueType: SideQueueTypeSchema,
     skipButtons: SkipButtonsSchema,
     theme: z.nativeEnum(AppTheme),
@@ -551,6 +566,7 @@ const PlaybackSettingsSchema = z.object({
     audioFadeOnStatusChange: z.boolean(),
     filters: z.array(PlayerFilterSchema),
     mediaSession: z.boolean(),
+    mpvAudioDeviceId: z.string().nullable().optional(),
     mpvExtraParameters: z.array(z.string()),
     mpvProperties: MpvSettingsSchema,
     preservePitch: z.boolean(),
@@ -572,7 +588,7 @@ const WindowSettingsSchema = z.object({
     exitToTray: z.boolean(),
     minimizeToTray: z.boolean(),
     preventSleepOnPlayback: z.boolean(),
-    releaseChannel: z.enum(['beta', 'latest']),
+    releaseChannel: z.enum(['alpha', 'beta', 'latest']),
     startMinimized: z.boolean(),
     tray: z.boolean(),
     windowBarStyle: z.nativeEnum(Platform),
@@ -641,6 +657,7 @@ export const SettingsStateSchema = ValidationSettingsStateSchema.merge(
 
 export enum ArtistItem {
     BIOGRAPHY = 'biography',
+    FAVORITE_SONGS = 'favoriteSongs',
     RECENT_ALBUMS = 'recentAlbums',
     SIMILAR_ARTISTS = 'similarArtists',
     TOP_SONGS = 'topSongs',
@@ -751,6 +768,7 @@ export enum SidebarItem {
     ALBUMS = 'Albums',
     ARTISTS = 'Artists',
     ARTISTS_ALL = 'Artists-all',
+    COLLECTIONS = 'Collections',
     FAVORITES = 'Favorites',
     FOLDERS = 'Folders',
     GENRES = 'Genres',
@@ -788,6 +806,8 @@ export type PlayerFilterOperator = z.infer<typeof PlayerFilterOperatorSchema>;
 
 export interface SettingsSlice extends z.infer<typeof SettingsStateSchema> {
     actions: {
+        addCollection: (collection: SavedCollection) => void;
+        removeCollection: (id: string) => void;
         reset: () => void;
         resetSampleRate: () => void;
         setArtistItems: (item: SortableItem<ArtistItem>[]) => void;
@@ -802,6 +822,7 @@ export interface SettingsSlice extends z.infer<typeof SettingsStateSchema> {
         setTranscodingConfig: (config: TranscodingConfig) => void;
         toggleMediaSession: () => void;
         toggleSidebarCollapseShare: () => void;
+        updateCollection: (id: string, updates: Partial<Omit<SavedCollection, 'id'>>) => void;
     };
 }
 export interface SettingsState extends z.infer<typeof SettingsStateSchema> {}
@@ -879,6 +900,12 @@ export const sidebarItems: SidebarItemType[] = [
         id: 'Playlists',
         label: i18n.t('page.sidebar.playlists'),
         route: AppRoute.PLAYLISTS,
+    },
+    {
+        disabled: false,
+        id: 'Collections',
+        label: i18n.t('page.sidebar.collections'),
+        route: '',
     },
     {
         disabled: false,
@@ -962,9 +989,12 @@ const initialState: SettingsState = {
         artistItems,
         artistRadioCount: 20,
         artistReleaseTypeItems,
+        blurExplicitImages: false,
         buttonSize: 15,
+        collections: [],
         combinedLyricsAndVisualizer: false,
         disabledContextMenu: {},
+        enableGridMultiSelect: false,
         externalLinks: true,
         followCurrentSong: true,
         followSystemTheme: false,
@@ -1005,6 +1035,8 @@ const initialState: SettingsState = {
         sidebarItems,
         sidebarPanelOrder: ['queue', 'lyrics', 'visualizer'],
         sidebarPlaylistList: true,
+        sidebarPlaylistListFilterRegex: '',
+        sidebarPlaylistSorting: false,
         sideQueueType: 'sideQueue',
         skipButtons: {
             enabled: false,
@@ -1094,6 +1126,7 @@ const initialState: SettingsState = {
                     ],
                 }),
                 enableAlternateRowColors: false,
+                enableHeader: true,
                 enableHorizontalBorders: false,
                 enableRowHoverHighlight: true,
                 enableVerticalBorders: false,
@@ -1122,6 +1155,7 @@ const initialState: SettingsState = {
                     width: column.width,
                 })),
                 enableAlternateRowColors: false,
+                enableHeader: true,
                 enableHorizontalBorders: false,
                 enableRowHoverHighlight: true,
                 enableVerticalBorders: false,
@@ -1172,6 +1206,7 @@ const initialState: SettingsState = {
                     width: column.width,
                 })),
                 enableAlternateRowColors: false,
+                enableHeader: true,
                 enableHorizontalBorders: false,
                 enableRowHoverHighlight: true,
                 enableVerticalBorders: false,
@@ -1212,6 +1247,7 @@ const initialState: SettingsState = {
                     ],
                 }),
                 enableAlternateRowColors: false,
+                enableHeader: true,
                 enableHorizontalBorders: false,
                 enableRowHoverHighlight: true,
                 enableVerticalBorders: false,
@@ -1257,6 +1293,7 @@ const initialState: SettingsState = {
                     ],
                 }),
                 enableAlternateRowColors: false,
+                enableHeader: true,
                 enableHorizontalBorders: false,
                 enableRowHoverHighlight: true,
                 enableVerticalBorders: false,
@@ -1302,6 +1339,7 @@ const initialState: SettingsState = {
                     width: column.width,
                 })),
                 enableAlternateRowColors: false,
+                enableHeader: true,
                 enableHorizontalBorders: false,
                 enableRowHoverHighlight: true,
                 enableVerticalBorders: false,
@@ -1337,6 +1375,7 @@ const initialState: SettingsState = {
                     ],
                 }),
                 enableAlternateRowColors: false,
+                enableHeader: true,
                 enableHorizontalBorders: false,
                 enableRowHoverHighlight: true,
                 enableVerticalBorders: false,
@@ -1383,6 +1422,7 @@ const initialState: SettingsState = {
                     width: column.width,
                 })),
                 enableAlternateRowColors: false,
+                enableHeader: true,
                 enableHorizontalBorders: false,
                 enableRowHoverHighlight: true,
                 enableVerticalBorders: false,
@@ -1411,6 +1451,7 @@ const initialState: SettingsState = {
                     width: column.width,
                 })),
                 enableAlternateRowColors: false,
+                enableHeader: true,
                 enableHorizontalBorders: false,
                 enableRowHoverHighlight: true,
                 enableVerticalBorders: false,
@@ -1457,6 +1498,7 @@ const initialState: SettingsState = {
                     width: column.width,
                 })),
                 enableAlternateRowColors: false,
+                enableHeader: true,
                 enableHorizontalBorders: false,
                 enableRowHoverHighlight: true,
                 enableVerticalBorders: false,
@@ -1487,6 +1529,7 @@ const initialState: SettingsState = {
                     ],
                 }),
                 enableAlternateRowColors: false,
+                enableHeader: true,
                 enableHorizontalBorders: false,
                 enableRowHoverHighlight: true,
                 enableVerticalBorders: false,
@@ -1522,6 +1565,7 @@ const initialState: SettingsState = {
         audioFadeOnStatusChange: true,
         filters: [],
         mediaSession: false,
+        mpvAudioDeviceId: undefined,
         mpvExtraParameters: [],
         mpvProperties: {
             audioExclusiveMode: 'no',
@@ -1641,6 +1685,18 @@ export const useSettingsStore = createWithEqualityFn<SettingsSlice>()(
             subscribeWithSelector(
                 immer((set) => ({
                     actions: {
+                        addCollection: (collection: SavedCollection) => {
+                            set((state) => {
+                                state.general.collections.push(collection);
+                            });
+                        },
+                        removeCollection: (id: string) => {
+                            set((state) => {
+                                state.general.collections = state.general.collections.filter(
+                                    (c) => c.id !== id,
+                                );
+                            });
+                        },
                         reset: () => {
                             localStorage.removeItem('store_settings');
                             window.location.reload();
@@ -1728,6 +1784,17 @@ export const useSettingsStore = createWithEqualityFn<SettingsSlice>()(
                             set((state) => {
                                 state.general.sidebarCollapseShared =
                                     !state.general.sidebarCollapseShared;
+                            });
+                        },
+                        updateCollection: (
+                            id: string,
+                            updates: Partial<Omit<SavedCollection, 'id'>>,
+                        ) => {
+                            set((state) => {
+                                const idx = state.general.collections.findIndex((c) => c.id === id);
+                                if (idx !== -1) {
+                                    Object.assign(state.general.collections[idx], updates);
+                                }
                             });
                         },
                     },
@@ -1994,10 +2061,38 @@ export const useSettingsStore = createWithEqualityFn<SettingsSlice>()(
                     });
                 }
 
+                if (version <= 22) {
+                    // Add enableHeader to all list table configs
+                    Object.keys(state.lists).forEach((listKey) => {
+                        const listConfig = state.lists[listKey as keyof typeof state.lists];
+                        if (
+                            listConfig?.table &&
+                            typeof listConfig.table === 'object' &&
+                            !('enableHeader' in listConfig.table)
+                        ) {
+                            (listConfig.table as any).enableHeader = true;
+                        }
+                    });
+                }
+
+                if (version <= 23) {
+                    // Add FAVORITE_SONGS to album artist page configuration
+                    const hasFavoriteSongs = state.general.artistItems?.some(
+                        (item) => item.id === ArtistItem.FAVORITE_SONGS,
+                    );
+
+                    if (!hasFavoriteSongs) {
+                        state.general.artistItems.push({
+                            disabled: false,
+                            id: ArtistItem.FAVORITE_SONGS,
+                        });
+                    }
+                }
+
                 return persistedState;
             },
             name: 'store_settings',
-            version: 22,
+            version: 24,
         },
     ),
 );
@@ -2103,8 +2198,23 @@ export const useSideQueueType = () =>
 export const useVolumeWheelStep = () =>
     useSettingsStore((state) => state.general.volumeWheelStep, shallow);
 
+export const useCollections = () => {
+    const collections = useSettingsStore((state) => state.general.collections, shallow);
+
+    return useMemo(
+        () => [...(collections ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
+        [collections],
+    );
+};
+
 export const useSidebarPlaylistList = () =>
     useSettingsStore((state) => state.general.sidebarPlaylistList, shallow);
+
+export const useSidebarPlaylistSorting = () =>
+    useSettingsStore((state) => state.general.sidebarPlaylistSorting, shallow);
+
+export const useSidebarPlaylistListFilterRegex = () =>
+    useSettingsStore((state) => state.general.sidebarPlaylistListFilterRegex, shallow);
 
 export const useSidebarItems = () =>
     useSettingsStore((state) => state.general.sidebarItems, shallow);

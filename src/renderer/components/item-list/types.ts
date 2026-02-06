@@ -4,6 +4,7 @@ import {
     AlbumArtist,
     Artist,
     Folder,
+    Genre,
     LibraryItem,
     Playlist,
     Song,
@@ -78,12 +79,21 @@ export interface ItemListHandle {
     scrollToOffset: (offset: number, options?: { behavior?: 'auto' | 'smooth' }) => void;
 }
 
-export type ItemListItem = Album | AlbumArtist | Artist | Folder | Playlist | Song | undefined;
+export type ItemListItem =
+    | Album
+    | AlbumArtist
+    | Artist
+    | Folder
+    | Genre
+    | Playlist
+    | Song
+    | undefined;
 
 export interface ItemListTableComponentProps<TQuery> extends ItemListComponentProps<TQuery> {
     autoFitColumns?: boolean;
     columns: ItemTableListColumnConfig[];
     enableAlternateRowColors?: boolean;
+    enableHeader?: boolean;
     enableHorizontalBorders?: boolean;
     enableRowHoverHighlight?: boolean;
     enableSelection?: boolean;

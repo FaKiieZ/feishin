@@ -46,6 +46,7 @@ const ALBUM_LIST_SORT_MAPPING: Record<AlbumListSort, AlbumListSortType | undefin
     [AlbumListSort.RECENTLY_PLAYED]: AlbumListSortType.RECENT,
     [AlbumListSort.RELEASE_DATE]: AlbumListSortType.BY_YEAR,
     [AlbumListSort.SONG_COUNT]: undefined,
+    [AlbumListSort.SORT_NAME]: AlbumListSortType.ALPHABETICAL_BY_NAME,
     [AlbumListSort.YEAR]: AlbumListSortType.BY_YEAR,
 };
 
@@ -1368,7 +1369,7 @@ export const SubsonicController: InternalControllerEndpoint = {
                 throw new Error('Failed to get song list');
             }
 
-            const allResults =
+            let allResults =
                 (res.body.starred?.song || []).map((song) =>
                     ssNormalize.song(
                         song,
@@ -1377,6 +1378,15 @@ export const SubsonicController: InternalControllerEndpoint = {
                         context?.pathReplaceWith,
                     ),
                 ) || [];
+
+            const filterArtistIds = query.albumArtistIds || query.artistIds;
+
+            if (filterArtistIds?.length) {
+                const idSet = new Set(filterArtistIds);
+                allResults = allResults.filter((song) =>
+                    song.albumArtists?.some((aa) => idSet.has(aa.id)),
+                );
+            }
 
             return sortAndPaginate(allResults, {
                 limit: query.limit,
@@ -1801,29 +1811,54 @@ export const SubsonicController: InternalControllerEndpoint = {
     getTopSongs: async (args) => {
         const { apiClientProps, context, query } = args;
 
-        const res = await ssApiClient(apiClientProps).getTopSongsList({
-            query: {
-                artist: query.artist,
-                count: query.limit,
-            },
-        });
+        const type = query.type === 'personal' ? 'personal' : 'community';
 
-        if (res.status !== 200) {
-            throw new Error('Failed to get top songs');
-        }
+        if (type === 'community') {
+            const res = await ssApiClient(apiClientProps).getTopSongsList({
+                query: {
+                    artist: query.artist,
+                    count: query.limit,
+                },
+            });
 
-        return {
-            items:
-                res.body.topSongs?.song?.map((song) =>
+            if (res.status !== 200) {
+                throw new Error('Failed to get top songs');
+            }
+
+            return {
+                items: (res.body.topSongs?.song || []).map((song) =>
                     ssNormalize.song(
                         song,
                         apiClientProps.server,
                         context?.pathReplace,
                         context?.pathReplaceWith,
                     ),
-                ) || [],
+                ),
+                startIndex: 0,
+                totalRecordCount: res.body.topSongs?.song?.length || 0,
+            };
+        }
+
+        const res = await SubsonicController.getSongList({
+            apiClientProps,
+            query: {
+                artistIds: [query.artistId],
+                sortBy: SongListSort.PLAY_COUNT,
+                sortOrder: SortOrder.DESC,
+                startIndex: 0,
+            },
+        });
+
+        const songsWithPlayCount = orderBy(
+            res.items.filter((song) => song.playCount > 0),
+            ['playCount', 'albumId', 'trackNumber'],
+            ['desc', 'asc', 'asc'],
+        );
+
+        return {
+            items: songsWithPlayCount,
             startIndex: 0,
-            totalRecordCount: res.body.topSongs?.song?.length || 0,
+            totalRecordCount: res.totalRecordCount,
         };
     },
     getUserInfo: async (args) => {

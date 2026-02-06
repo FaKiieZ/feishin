@@ -92,9 +92,12 @@ export const MobilePlayerbar = () => {
                                                 styles.playerbarImage,
                                                 PlaybackSelectors.playerCoverArt,
                                             )}
+                                            enableDebounce={false}
+                                            enableViewport={false}
+                                            explicitStatus={currentSong.explicitStatus}
+                                            fetchPriority="high"
                                             id={currentSong.imageId}
                                             itemType={LibraryItem.SONG}
-                                            loading="eager"
                                             type="table"
                                         />
                                     </Tooltip>
