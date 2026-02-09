@@ -140,6 +140,38 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
 
         try {
             setIsLoading(true);
+
+            // Handle SSO Flow: Open window and wait for it to close
+            if (values.ssoEnabled && isElectron()) {
+                const ssoUrl = values.ssoUrl || values.url;
+                if (!ssoUrl) {
+                    setIsLoading(false);
+                    return toast.error({ message: 'Please enter a URL for SSO' });
+                }
+
+                const toastId = toast.show({
+                    autoClose: false,
+                    loading: true,
+                    message: 'Opening SSO Login Window... Please login and close the window to continue.',
+                    withCloseButton: false,
+                });
+                
+                (window.api as any).ipc.send('auth:open-sso', ssoUrl, 'add-server');
+
+                // Wait for the window to close
+                await new Promise<void>((resolve) => {
+                    const handleClosed = (_event: any, flowId?: string) => {
+                         if (flowId === 'add-server') {
+                            (window.api as any).ipc.off('auth:sso-closed', handleClosed);
+                            resolve();
+                         }
+                    };
+                     (window.api as any).ipc.on('auth:sso-closed', handleClosed);
+                });
+                
+                toast.hide(toastId);
+            }
+
             const data: AuthenticationResponse | undefined = await authFunction(
                 values.url,
                 {
@@ -362,21 +394,6 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
                             placeholder={form.values.url || 'https://sso.example.com'}
                             {...form.getInputProps('ssoUrl')}
                         />
-                    )}
-                    {form.values.ssoEnabled && isElectron() && (
-                        <ModalButton
-                            onClick={() => {
-                                const url = form.values.ssoUrl || form.values.url;
-                                if (url) {
-                                    (window.api as any).ipc.send('auth:open-sso', url);
-                                } else {
-                                    toast.error({ message: 'Please enter a URL first' });
-                                }
-                            }}
-                            variant="outline"
-                        >
-                            Open SSO Login Window
-                        </ModalButton>
                     )}
                     {isElectron() && (
                         <>

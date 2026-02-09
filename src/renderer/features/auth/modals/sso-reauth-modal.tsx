@@ -1,8 +1,9 @@
 import { Modal } from '@mantine/core';
 import isElectron from 'is-electron';
-import { useEffect, useState } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { api } from '/@/renderer/api';
 import { useAuthStore } from '/@/renderer/store';
 import { Button } from '/@/shared/components/button/button';
 import { Stack } from '/@/shared/components/stack/stack';
@@ -19,9 +20,13 @@ export const SSOReauthModal = () => {
             setOpened(true);
         };
 
-        const handleSSOClosed = () => {
-            console.log('Received auth:sso-closed event');
+        const handleSSOClosed = (_event: any, flowId?: string) => {
+            // Only handle if it matches our flow (or is undefined for backward compatibility if needed, but better strict)
+            if (flowId !== 'reauth') return;
+
+            console.log('Received auth:sso-closed event for reauth');
             setOpened(false);
+            stopPolling();
             // Optionally reload or retry requests here if needed
             // For now, user can click retry or navigate manually
             window.location.reload(); 
@@ -33,6 +38,7 @@ export const SSOReauthModal = () => {
         }
 
         return () => {
+            stopPolling();
             window.removeEventListener('auth:sso-session-expired', handleSSOSessionExpired);
             if (isElectron()) {
                  (window.api as any)?.ipc.off('auth:sso-closed', handleSSOClosed);
@@ -40,25 +46,61 @@ export const SSOReauthModal = () => {
         };
     }, []);
 
+    const pollingRef = useRef<number | null>(null);
+
+    const stopPolling = () => {
+        if (pollingRef.current) {
+            window.clearInterval(pollingRef.current);
+            pollingRef.current = null;
+        }
+    };
+
     const handleLogin = () => {
         if (!currentServer) return;
         
         const url_to_open = currentServer.ssoUrl || currentServer.url;
 
         if (isElectron()) {
-            (window.api as any).ipc.send('auth:open-sso', url_to_open);
+            (window.api as any).ipc.send('auth:open-sso', url_to_open, 'reauth');
+
+            // Start polling for successful connection
+            stopPolling();
+            pollingRef.current = window.setInterval(async () => {
+                if (!currentServer.userId) return;
+
+                try {
+                    // Try to fetch user info. If it succeeds, the SSO cookie is valid.
+                    const userInfo = await api.controller.getUserInfo({
+                        apiClientProps: { serverId: currentServer.id },
+                        query: { id: currentServer.userId, username: currentServer.username }
+                    });
+
+                    if (userInfo) {
+                        // Success! Close SSO window and reload
+                        (window.api as any).ipc.send('auth:close-sso');
+                        stopPolling();
+                        setOpened(false);
+                        window.location.reload();
+                    }
+                } catch (e) {
+                    // Ignore errors (401, network, etc) while polling
+                }
+            }, 2000);
         } else {
             // Web fallback: open in new tab
             window.open(url_to_open, '_blank');
-            // In web, we can't easily detect when the tab closes or auth finishes
-            // so we might provide a "I've logged in" button
         }
     };
+
+    // Clean up on unmount or close
+    useEffect(() => {
+        return () => stopPolling();
+    }, []);
 
     return (
         <Modal
             opened={opened}
-            onClose={() => setOpened(false)}
+            onClose={() => { setOpened(false); stopPolling(); }}
             title={t('error.sessionExpiredError', { defaultValue: 'SSO Session Expired' })}
             centered
             withCloseButton={false}

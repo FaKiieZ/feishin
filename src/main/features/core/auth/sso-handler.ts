@@ -3,7 +3,7 @@ import { getAssetPath } from '../../../paths';
 
 let ssoWindow: BrowserWindow | null = null;
 
-export const openSSOWindow = async (url: string) => {
+export const openSSOWindow = async (url: string, sender?: Electron.WebContents, flowId?: string) => {
     if (ssoWindow && !ssoWindow.isDestroyed()) {
         ssoWindow.focus();
         ssoWindow.loadURL(url);
@@ -30,12 +30,8 @@ export const openSSOWindow = async (url: string) => {
     ssoWindow.on('closed', () => {
         ssoWindow = null;
         // Notify renderer that the SSO window has closed
-        // The renderer can then try to re-authenticate or check connectivity
-        // modifying this to send to all windows or the main window
-        const { getMainWindow } = require('../../../index');
-        const mainWindow = getMainWindow();
-        if (mainWindow) {
-            mainWindow.webContents.send('auth:sso-closed');
+        if (sender && !sender.isDestroyed()) {
+            sender.send('auth:sso-closed', flowId);
         }
     });
 
@@ -43,6 +39,12 @@ export const openSSOWindow = async (url: string) => {
     // but for now relying on user to close window is safer for generic SSO.
 };
 
-ipcMain.on('auth:open-sso', (_event, url: string) => {
-    openSSOWindow(url);
+ipcMain.on('auth:open-sso', (event, url: string, flowId?: string) => {
+    openSSOWindow(url, event.sender, flowId);
+});
+
+ipcMain.on('auth:close-sso', () => {
+    if (ssoWindow && !ssoWindow.isDestroyed()) {
+        ssoWindow.close();
+    }
 });
