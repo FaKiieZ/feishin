@@ -20,18 +20,25 @@ export const CacheSettings = memo(() => {
     const { t } = useTranslation();
 
     const clearCache = useCallback(
-        async (full: boolean) => {
+        async (full: boolean, cookies: boolean = false) => {
             setIsClearing(true);
 
             try {
-                queryClient.clear();
+                if (!cookies) {
+                    queryClient.clear();
+                }
 
-                if (full && browser) {
+                if (cookies && browser) {
+                    await browser.clearCookies();
+                } else if (full && browser) {
                     await browser.clearCache();
                 }
 
                 toast.success({
-                    message: t('setting.clearCacheSuccess', { postProcess: 'sentenceCase' }),
+                    message: t(cookies ? 'setting.clearCookiesSuccess' : 'setting.clearCacheSuccess', { 
+                        defaultValue: cookies ? 'Cookies cleared successfully' : 'Cache cleared successfully',
+                        postProcess: 'sentenceCase' 
+                    }),
                 });
             } catch (error) {
                 console.error(error);
@@ -44,15 +51,18 @@ export const CacheSettings = memo(() => {
         [queryClient, t],
     );
 
-    const openResetConfirmModal = (full: boolean) => {
-        const key = full ? 'clearCache' : 'clearQueryCache';
+    const openResetConfirmModal = (full: boolean, cookies: boolean = false) => {
+        const key = cookies ? 'clearCookies' : full ? 'clearCache' : 'clearQueryCache';
         openModal({
             children: (
-                <ConfirmModal onConfirm={() => clearCache(full)}>
+                <ConfirmModal onConfirm={() => clearCache(full, cookies)}>
                     {t(`common.areYouSure`, { postProcess: 'sentenceCase' })}
                 </ConfirmModal>
             ),
-            title: t(`setting.${key}`, { postProcess: 'sentenceCase' }),
+            title: t(`setting.${key}`, {
+                defaultValue: cookies ? 'Clear Cookies' : undefined,
+                postProcess: 'sentenceCase' 
+            }),
         });
     };
 
@@ -91,6 +101,25 @@ export const CacheSettings = memo(() => {
             }),
             isHidden: !browser,
             title: t('setting.clearCache', { postProcess: 'sentenceCase' }),
+        },
+        {
+            control: (
+                <Button
+                    disabled={isClearing}
+                    onClick={() => openResetConfirmModal(false, true)}
+                    size="compact-md"
+                    variant="filled"
+                >
+                    {t('common.clear', { postProcess: 'sentenceCase' })}
+                </Button>
+            ),
+            description: t('setting.clearCookies', {
+                context: 'description',
+                defaultValue: 'Clear cookies (useful for resetting SSO sessions)',
+                postProcess: 'sentenceCase',
+            }),
+            isHidden: !browser,
+            title: t('setting.clearCookies', { defaultValue: 'Clear Cookies', postProcess: 'sentenceCase' }),
         },
     ];
 

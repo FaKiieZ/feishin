@@ -425,6 +425,21 @@ async function createWindow(first = true): Promise<void> {
         return mainWindow?.webContents.session.clearCache();
     });
 
+    ipcMain.handle('window-clear-cookies', async () => {
+        if (mainWindow) {
+            await mainWindow.webContents.session.clearStorageData({
+                storages: ['cookies'],
+            });
+        }
+
+        // Also ensure default session is cleared if different
+        const { session } = require('electron');
+        await session.defaultSession.clearStorageData({
+            storages: ['cookies'],
+        });
+        return true;
+    });
+
     ipcMain.handle(
         'app-check-for-updates',
         async (): Promise<{ updateAvailable: boolean; version?: string }> => {

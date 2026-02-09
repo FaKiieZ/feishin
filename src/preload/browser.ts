@@ -28,8 +28,13 @@ const clearCache = (): Promise<void> => {
     return ipcRenderer.invoke('window-clear-cache');
 };
 
+const clearCookies = (): Promise<void> => {
+    return ipcRenderer.invoke('window-clear-cookies');
+};
+
 export const browser = {
     clearCache,
+    clearCookies,
     devtools,
     exit,
     maximize,
