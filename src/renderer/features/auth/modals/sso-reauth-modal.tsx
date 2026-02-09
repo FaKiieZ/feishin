@@ -109,7 +109,7 @@ export const SSOReauthModal = () => {
                 window.api.ipc.off(IPC_EVENTS.AUTH_SSO_CLOSED, handleSSOClosed);
             }
         };
-    }, [handleLogin]);
+    }, [handleLogin, stopPolling]);
 
     // Auto-open SSO window when the modal opens (only relevant for Web now, or if we decide to show modal in Electron later)
     useEffect(() => {
