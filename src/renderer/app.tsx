@@ -22,6 +22,7 @@ import { WebAudio } from '/@/shared/types/types';
 import '/@/shared/styles/global.css';
 import { PlayerProvider } from '/@/renderer/features/player/context/player-context';
 import { AudioPlayers } from '/@/renderer/features/player/components/audio-players';
+import { SSOReauthModal } from '/@/renderer/features/auth/modals/sso-reauth-modal';
 
 const ReleaseNotesModal = lazy(() =>
     import('./release-notes-modal').then((module) => ({
@@ -116,6 +117,7 @@ export const App = () => {
                     <AppRouter />
                 </PlayerProvider>
             </WebAudioContext.Provider>
+            <SSOReauthModal />
             <Suspense fallback={null}>
                 <ReleaseNotesModal />
             </Suspense>

@@ -12,8 +12,18 @@ const invoke = (channel: string, ...args: any[]) => {
     return ipcRenderer.invoke(channel, ...args);
 };
 
+const on = (channel: string, listener: (event: Electron.IpcRendererEvent, ...args: any[]) => void) => {
+    ipcRenderer.on(channel, listener);
+};
+
+const off = (channel: string, listener: (event: Electron.IpcRendererEvent, ...args: any[]) => void) => {
+    ipcRenderer.off(channel, listener);
+};
+
 export const ipc = {
     invoke,
+    off,
+    on,
     removeAllListeners,
     send,
 };

@@ -8,6 +8,12 @@ export const authenticationFailure = (currentServer: null | ServerListItem) => {
     });
 
     if (currentServer) {
+        if (currentServer.ssoEnabled) {
+            console.log('SSO session expired, triggering re-auth flow');
+            window.dispatchEvent(new CustomEvent('auth:sso-session-expired'));
+            return;
+        }
+
         const serverId = currentServer.id;
         const token = currentServer.ndCredential;
         console.error(`token is expired: ${token}`);

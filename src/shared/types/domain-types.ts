@@ -93,6 +93,8 @@ export type ServerListItem = {
     preferRemoteUrl?: boolean;
     remoteUrl?: string;
     savePassword?: boolean;
+    ssoEnabled?: boolean;
+    ssoUrl?: string;
     type: ServerType;
     url: string;
     userId: null | string;

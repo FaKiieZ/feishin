@@ -11,7 +11,8 @@ import {
     QueueSong,
     Song,
 } from '/@/shared/types/domain-types';
-import { ServerFeatures } from '/@/shared/types/features-types';
+export type { ServerListItem } from '/@/shared/types/domain-types';
+
 
 export enum ItemListKey {
     ALBUM = LibraryItem.ALBUM,
@@ -250,21 +251,7 @@ export type QueryBuilderRule = {
     value?: any | Date | null | number | string | undefined;
 };
 
-export type ServerListItem = {
-    credential: string;
-    features?: ServerFeatures;
-    id: string;
-    name: string;
-    ndCredential?: string;
-    preferRemoteUrl?: boolean;
-    remoteUrl?: string;
-    savePassword?: boolean;
-    type: ServerType;
-    url: string;
-    userId: null | string;
-    username: string;
-    version?: string;
-};
+
 
 export type SongState = {
     position?: number;

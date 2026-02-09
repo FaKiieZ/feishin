@@ -293,6 +293,11 @@ axiosClient.interceptors.response.use(
             const currentServer = useAuthStore.getState().currentServer;
 
             if (localSettings && currentServer?.savePassword) {
+                if (currentServer.ssoEnabled) {
+                    authenticationFailure(currentServer);
+                    return Promise.reject(error);
+                }
+
                 return localSettings
                     .passwordGet(currentServer.id)
                     .then(async (password: null | string) => {
@@ -431,6 +436,7 @@ export const ndApiClient = (args: {
                     method: method as Method,
                     params,
                     signal,
+                    withCredentials: server?.ssoEnabled,
                     url: `${baseUrl}/${api}`,
                 });
                 return {

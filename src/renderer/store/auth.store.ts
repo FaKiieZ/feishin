@@ -127,6 +127,8 @@ export const useCurrentServer = () =>
             preferRemoteUrl: state.currentServer?.preferRemoteUrl,
             remoteUrl: state.currentServer?.remoteUrl,
             savePassword: state.currentServer?.savePassword,
+            ssoEnabled: state.currentServer?.ssoEnabled,
+            ssoUrl: state.currentServer?.ssoUrl,
             type: state.currentServer?.type,
             url: state.currentServer?.url,
             userId: state.currentServer?.userId,

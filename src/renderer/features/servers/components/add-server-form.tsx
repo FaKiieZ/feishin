@@ -112,6 +112,8 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
             preferRemoteUrl: false,
             remoteUrl: '',
             savePassword: undefined,
+            ssoEnabled: false,
+            ssoUrl: '',
             type:
                 (localSettings
                     ? localSettings.env.SERVER_TYPE
@@ -154,6 +156,12 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
                 });
             }
 
+            if (!data.userId && !data.username) {
+                return toast.error({
+                    message: t('error.authenticationFailed', { postProcess: 'sentenceCase' }) + ' (Missing user info)',
+                });
+            }
+
             const serverItem: ServerListItemWithCredential = {
                 credential: data.credential,
                 id: nanoid(),
@@ -183,6 +191,13 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
 
             if (data.ndCredential !== undefined) {
                 serverItem.ndCredential = data.ndCredential;
+            }
+
+            if (values.ssoEnabled) {
+                serverItem.ssoEnabled = values.ssoEnabled;
+                if (values.ssoUrl?.trim()) {
+                    serverItem.ssoUrl = values.ssoUrl.trim().replace(/\/$/, '');
+                }
             }
 
             addServer(serverItem);
@@ -335,6 +350,33 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
                                 type: 'checkbox',
                             })}
                         />
+                    )}
+                    <Divider />
+                    <Checkbox
+                        label="Enable SSO / Proxy Authentication"
+                        {...form.getInputProps('ssoEnabled', { type: 'checkbox' })}
+                    />
+                    {form.values.ssoEnabled && (
+                        <TextInput
+                            label="SSO Login URL"
+                            placeholder={form.values.url || 'https://sso.example.com'}
+                            {...form.getInputProps('ssoUrl')}
+                        />
+                    )}
+                    {form.values.ssoEnabled && isElectron() && (
+                        <ModalButton
+                            onClick={() => {
+                                const url = form.values.ssoUrl || form.values.url;
+                                if (url) {
+                                    (window.api as any).ipc.send('auth:open-sso', url);
+                                } else {
+                                    toast.error({ message: 'Please enter a URL first' });
+                                }
+                            }}
+                            variant="outline"
+                        >
+                            Open SSO Login Window
+                        </ModalButton>
                     )}
                     {isElectron() && (
                         <>

@@ -36,6 +36,7 @@ import {
     isMacOS,
     isWindows,
 } from './utils';
+import { getAssetPath } from './paths';
 import './features';
 
 import { PlayerType, TitleTheme } from '/@/shared/types/types';
@@ -210,13 +211,7 @@ if (isDevelopment) {
     app.setPath('userData', devUserDataPath);
 }
 
-const RESOURCES_PATH = app.isPackaged
-    ? path.join(process.resourcesPath, 'assets')
-    : path.join(__dirname, '../../assets');
 
-const getAssetPath = (...paths: string[]): string => {
-    return path.join(RESOURCES_PATH, ...paths);
-};
 
 export const getMainWindow = () => {
     return mainWindow;

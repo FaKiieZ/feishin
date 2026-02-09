@@ -373,9 +373,11 @@ axiosClient.interceptors.response.use(
             const currentServer = useAuthStore.getState().currentServer;
 
             if (currentServer) {
-                useAuthStore
-                    .getState()
-                    .actions.updateServer(currentServer.id, { credential: undefined });
+                if (!currentServer.ssoEnabled) {
+                    useAuthStore
+                        .getState()
+                        .actions.updateServer(currentServer.id, { credential: undefined });
+                }
             }
 
             authenticationFailure(currentServer);
@@ -438,6 +440,7 @@ export const jfApiClient = (args: {
                     params,
                     signal,
                     url: `${baseUrl}/${api}`,
+                    withCredentials: server?.ssoEnabled,
                 });
                 return {
                     body: result.data,
