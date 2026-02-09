@@ -12,9 +12,9 @@ import { getServerUrl } from '/@/renderer/utils/normalize-server-url';
 import { ssType } from '/@/shared/api/subsonic/subsonic-types';
 import { hasFeature } from '/@/shared/api/utils';
 import { toast } from '/@/shared/components/toast/toast';
+import { API_RESPONSE_KEYS } from '/@/shared/constants';
 import { ServerListItemWithCredential } from '/@/shared/types/domain-types';
 import { ServerFeature } from '/@/shared/types/features-types';
-import { API_RESPONSE_KEYS } from '/@/shared/constants';
 
 const c = initContract();
 const localSettings = isElectron() ? window.api.localSettings : null;
@@ -400,7 +400,7 @@ const silentlyTransformResponse = (data: any) => {
         }
 
         return jsonBody;
-    } catch (e) {
+    } catch {
         return data;
     }
 };

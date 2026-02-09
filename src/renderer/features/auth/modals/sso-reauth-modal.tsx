@@ -1,14 +1,14 @@
 import { Modal } from '@mantine/core';
 import isElectron from 'is-electron';
-import { useRef, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '/@/renderer/api';
-import { IPC_EVENTS, SSO_FLOW_IDS } from '/@/shared/constants';
 import { useAuthStore } from '/@/renderer/store';
 import { Button } from '/@/shared/components/button/button';
 import { Stack } from '/@/shared/components/stack/stack';
 import { Text } from '/@/shared/components/text/text';
+import { IPC_EVENTS, SSO_FLOW_IDS } from '/@/shared/constants';
 
 export const SSOReauthModal = () => {
     const { t } = useTranslation();
@@ -17,17 +17,17 @@ export const SSOReauthModal = () => {
     // We use a ref to track if we're currently polling/handling an SSO flow
     // to prevent duplicate triggers or weird state
     const isHandlingRef = useRef(false);
-    const pollingRef = useRef<number | null>(null);
+    const pollingRef = useRef<null | number>(null);
 
-    const stopPolling = () => {
+    const stopPolling = useCallback(() => {
         if (pollingRef.current) {
             window.clearInterval(pollingRef.current);
             pollingRef.current = null;
         }
         isHandlingRef.current = false;
-    };
+    }, []);
 
-    const handleLogin = () => {
+    const handleLogin = useCallback(() => {
         // Always get fresh state from store directly to avoid stale closures
         const currentServer = useAuthStore.getState().currentServer;
 
@@ -66,7 +66,7 @@ export const SSOReauthModal = () => {
                         setOpened(false);
                         window.location.reload();
                     }
-                } catch (e) {
+                } catch {
                     // Ignore errors (401, network, etc) while polling
                 }
             }, 2000);
@@ -74,7 +74,7 @@ export const SSOReauthModal = () => {
             // Web fallback: open in new tab
             window.open(url_to_open, '_blank');
         }
-    };
+    }, [stopPolling]);
 
     useEffect(() => {
         const handleSSOSessionExpired = () => {
@@ -109,7 +109,7 @@ export const SSOReauthModal = () => {
                 window.api.ipc.off(IPC_EVENTS.AUTH_SSO_CLOSED, handleSSOClosed);
             }
         };
-    }, []);
+    }, [handleLogin]);
 
     // Auto-open SSO window when the modal opens (only relevant for Web now, or if we decide to show modal in Electron later)
     useEffect(() => {
@@ -124,7 +124,10 @@ export const SSOReauthModal = () => {
     // Clean up on unmount or close
     useEffect(() => {
         return () => stopPolling();
-    }, []);
+    }, [stopPolling]);
+
+    // For Web, we need the currentServer for the UI text
+    const currentServer = useAuthStore((state) => state.currentServer);
 
     // In Electron, we render nothing (invisible handler).
     // In Web, we render the modal.
@@ -132,21 +135,18 @@ export const SSOReauthModal = () => {
         return null;
     }
 
-    // For Web, we need the currentServer for the UI text
-    const currentServer = useAuthStore((state) => state.currentServer);
-
     return (
         <Modal
-            opened={opened}
+            centered
+            closeOnClickOutside={false}
+            closeOnEscape={false}
             onClose={() => {
                 setOpened(false);
                 stopPolling();
             }}
+            opened={opened}
             title={t('error.sessionExpiredError', { defaultValue: 'SSO Session Expired' })}
-            centered
             withCloseButton={false}
-            closeOnClickOutside={false}
-            closeOnEscape={false}
         >
             <Stack>
                 <Text>
@@ -156,10 +156,10 @@ export const SSOReauthModal = () => {
                         serverName: currentServer?.name,
                     })}
                 </Text>
-                <Button onClick={handleLogin} fullWidth>
+                <Button fullWidth onClick={handleLogin}>
                     {t('auth.openLoginTab', { defaultValue: 'Open Login Tab' })}
                 </Button>
-                <Button variant="outline" onClick={() => setOpened(false)} fullWidth>
+                <Button fullWidth onClick={() => setOpened(false)} variant="outline">
                     {t('auth.iHaveLoggedIn', { defaultValue: 'I have logged in' })}
                 </Button>
             </Stack>

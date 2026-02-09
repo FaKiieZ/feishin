@@ -25,11 +25,11 @@ import { Stack } from '/@/shared/components/stack/stack';
 import { TextInput } from '/@/shared/components/text-input/text-input';
 import { Text } from '/@/shared/components/text/text';
 import { toast } from '/@/shared/components/toast/toast';
+import { IPC_EVENTS, SSO_FLOW_IDS, TIMEOUTS } from '/@/shared/constants';
 import { useFocusTrap } from '/@/shared/hooks/use-focus-trap';
 import { useForm } from '/@/shared/hooks/use-form';
 import { AuthenticationResponse, ServerListItemWithCredential } from '/@/shared/types/domain-types';
 import { DiscoveredServerItem, ServerType, toServerType } from '/@/shared/types/types';
-import { IPC_EVENTS, SSO_FLOW_IDS, TIMEOUTS } from '/@/shared/constants';
 
 const autodiscover = isElectron() ? window.api.autodiscover : null;
 const localSettings = isElectron() ? window.api.localSettings : null;
@@ -166,6 +166,7 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
 
                 // Wait for the window to close
                 await new Promise<void>((resolve, reject) => {
+                    // eslint-disable-next-line prefer-const
                     let timeoutId: number;
 
                     const handleClosed = (_event: any, flowId?: string) => {

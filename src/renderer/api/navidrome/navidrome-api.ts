@@ -8,13 +8,13 @@ import qs from 'qs';
 import i18n from '/@/i18n/i18n';
 import { authenticationFailure } from '/@/renderer/api/utils';
 import { useAuthStore } from '/@/renderer/store';
+import { LogCategory, logFn } from '/@/renderer/utils/logger';
 import { getServerUrl } from '/@/renderer/utils/normalize-server-url';
 import { ndType } from '/@/shared/api/navidrome/navidrome-types';
 import { resultWithHeaders } from '/@/shared/api/utils';
 import { toast } from '/@/shared/components/toast/toast';
-import { ServerListItemWithCredential } from '/@/shared/types/domain-types';
 import { HEADERS } from '/@/shared/constants';
-import { LogCategory, logFn } from '/@/renderer/utils/logger';
+import { ServerListItemWithCredential } from '/@/shared/types/domain-types';
 
 const localSettings = isElectron() ? window.api.localSettings : null;
 
@@ -448,8 +448,8 @@ export const ndApiClient = (args: {
                     method: method as Method,
                     params,
                     signal,
-                    withCredentials: server?.ssoEnabled,
                     url: `${baseUrl}/${api}`,
+                    withCredentials: server?.ssoEnabled,
                 });
 
                 // Check for invalid response (e.g. HTML login page from SSO proxy returning 200 OK)

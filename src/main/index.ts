@@ -27,6 +27,7 @@ import { disableMediaKeys, enableMediaKeys } from './features/core/player/media-
 import { shutdownServer } from './features/core/remote';
 import { store } from './features/core/settings';
 import MenuBuilder from './menu';
+import { getAssetPath } from './paths';
 import {
     autoUpdaterLogInterface,
     createLog,
@@ -36,7 +37,6 @@ import {
     isMacOS,
     isWindows,
 } from './utils';
-import { getAssetPath } from './paths';
 import './features';
 
 import { PlayerType, TitleTheme } from '/@/shared/types/types';
@@ -431,8 +431,8 @@ async function createWindow(first = true): Promise<void> {
         }
 
         // Also ensure default session is cleared if different
-        const { session } = require('electron');
-        await session.defaultSession.clearStorageData({
+        const { session: electronSession } = await import('electron');
+        await electronSession.defaultSession.clearStorageData({
             storages: ['cookies'],
         });
         return true;

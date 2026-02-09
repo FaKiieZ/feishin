@@ -1,4 +1,5 @@
 import { BrowserWindow, ipcMain, session } from 'electron';
+
 import { IPC_EVENTS } from '../../../../shared/constants';
 import { getAssetPath } from '../../../paths';
 
