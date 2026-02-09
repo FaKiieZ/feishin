@@ -1,5 +1,6 @@
 import { initClient, initContract } from '@ts-rest/core';
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse, isAxiosError } from 'axios';
+import isElectron from 'is-electron';
 import omitBy from 'lodash/omitBy';
 import qs from 'qs';
 import { z } from 'zod';
@@ -463,6 +464,40 @@ export const ssApiClient = (args: {
 
                     const error = e as AxiosError;
                     const response = error.response as AxiosResponse;
+
+                    if (
+                        server?.dualAuth &&
+                        isElectron() &&
+                        (response?.status === 401 || response?.status === 403)
+                    ) {
+                        window.api.auth.openSSOWindow(server.url);
+
+                        await new Promise<void>((resolve) => {
+                            const cleanup = window.api.auth.onSSOClosed(() => {
+                                cleanup();
+                                resolve();
+                            });
+                        });
+
+                        try {
+                            const result =
+                                await axiosClient.request<z.infer<typeof ssType._response.baseResponse>>(
+                                    request,
+                                );
+
+                            if (typeof result.data === 'string') {
+                                throw new Error('Received invalid response from server (HTML)');
+                            }
+
+                            return {
+                                body: result.data['subsonic-response'],
+                                headers: result.headers as any,
+                                status: result.status,
+                            };
+                        } catch {
+                            // Ignore
+                        }
+                    }
 
                     return {
                         body: response?.data,

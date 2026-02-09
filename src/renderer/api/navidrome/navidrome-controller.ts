@@ -137,12 +137,18 @@ export const NavidromeController: InternalControllerEndpoint = {
             throw new Error('Failed to authenticate');
         }
 
+        const data = res.body.data;
+
+        if (!data || !data.id) {
+            throw new Error('Authentication failed: Invalid response from server');
+        }
+
         return {
-            credential: `u=${body.username}&s=${res.body.data.subsonicSalt}&t=${res.body.data.subsonicToken}`,
-            isAdmin: Boolean(res.body.data.isAdmin),
-            ndCredential: res.body.data.token,
-            userId: res.body.data.id,
-            username: res.body.data.username,
+            credential: `u=${body.username}&s=${data.subsonicSalt}&t=${data.subsonicToken}`,
+            isAdmin: Boolean(data.isAdmin),
+            ndCredential: data.token,
+            userId: data.id,
+            username: data.username || body.username,
         };
     },
     createFavorite: SubsonicController.createFavorite,

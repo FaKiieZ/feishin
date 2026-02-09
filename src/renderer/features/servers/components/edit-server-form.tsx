@@ -61,6 +61,7 @@ export const EditServerForm = ({ isUpdate, onCancel, password, server }: EditSer
             type: server?.type,
             url: server?.url,
             username: server?.username,
+            dualAuth: server?.dualAuth || false,
         },
     });
 
@@ -140,6 +141,10 @@ export const EditServerForm = ({ isUpdate, onCancel, password, server }: EditSer
                 if (data.ndCredential !== undefined) {
                     serverItem.ndCredential = data.ndCredential;
                 }
+            }
+
+            if (values.dualAuth !== undefined) {
+                serverItem.dualAuth = values.dualAuth;
             }
 
             // Update optional fields
@@ -288,6 +293,12 @@ export const EditServerForm = ({ isUpdate, onCancel, password, server }: EditSer
                         })}
                     />
                 )}
+                <Checkbox
+                    label="Enable Dual Auth (SSO)"
+                    {...form.getInputProps('dualAuth', {
+                        type: 'checkbox',
+                    })}
+                />
                 {form.values.type === ServerType.JELLYFIN && (
                     <Checkbox
                         description={t('form.addServer.input', {

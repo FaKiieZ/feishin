@@ -84,6 +84,7 @@ export interface SavedCollection {
 }
 
 export type ServerListItem = {
+    dualAuth?: boolean;
     features?: ServerFeatures;
     id: string;
     isAdmin?: boolean;
@@ -102,6 +103,7 @@ export type ServerListItem = {
 
 export type ServerListItemWithCredential = ServerListItem & {
     credential: string;
+    dualAuth?: boolean;
     ndCredential?: string;
 };
 

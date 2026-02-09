@@ -1,5 +1,6 @@
 import { initClient, initContract } from '@ts-rest/core';
 import axios, { AxiosError, AxiosResponse, isAxiosError, Method } from 'axios';
+import isElectron from 'is-electron';
 import omitBy from 'lodash/omitBy';
 import qs from 'qs';
 import { z } from 'zod';
@@ -456,6 +457,50 @@ export const jfApiClient = (args: {
 
                     const error = e as AxiosError;
                     const response = error.response as AxiosResponse;
+
+                    if (
+                        server?.dualAuth &&
+                        isElectron() &&
+                        (response?.status === 401 || response?.status === 403)
+                    ) {
+                        window.api.auth.openSSOWindow(server.url);
+
+                        await new Promise<void>((resolve) => {
+                            const cleanup = window.api.auth.onSSOClosed(() => {
+                                cleanup();
+                                resolve();
+                            });
+                        });
+
+                        try {
+                            const result = await axiosClient.request({
+                                data: body,
+                                headers: {
+                                    ...headers,
+                                    ...(token
+                                        ? { Authorization: createAuthHeader().concat(`, Token="${token}"`) }
+                                        : { Authorization: createAuthHeader() }),
+                                },
+                                method: method as Method,
+                                params,
+                                signal,
+                                url: `${baseUrl}/${api}`,
+                            });
+
+                            if (typeof result.data === 'string') {
+                                throw new Error('Received invalid response from server (HTML)');
+                            }
+
+                            return {
+                                body: result.data,
+                                headers: result.headers as any,
+                                status: result.status,
+                            };
+                        } catch {
+                            // Ignore
+                        }
+                    }
+
                     return {
                         body: response?.data,
                         headers: response?.headers as any,

@@ -118,6 +118,7 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
                     : toServerType(window.SERVER_TYPE)) ?? ServerType.NAVIDROME,
             url: (localSettings ? localSettings.env.SERVER_URL : window.SERVER_URL) ?? 'https://',
             username: '',
+            dualAuth: false,
         },
     });
 
@@ -183,6 +184,10 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
 
             if (data.ndCredential !== undefined) {
                 serverItem.ndCredential = data.ndCredential;
+            }
+
+            if (values.dualAuth !== undefined) {
+                serverItem.dualAuth = values.dualAuth;
             }
 
             addServer(serverItem);
@@ -321,6 +326,10 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
                             {...form.getInputProps('legacyAuth', { type: 'checkbox' })}
                         />
                     )}
+                    <Checkbox
+                        label="Enable Dual Auth (SSO)"
+                        {...form.getInputProps('dualAuth', { type: 'checkbox' })}
+                    />
                     {form.values.type === ServerType.JELLYFIN && (
                         <Checkbox
                             description={t('form.addServer.input', {
