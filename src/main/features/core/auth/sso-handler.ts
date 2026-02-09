@@ -1,4 +1,5 @@
 import { BrowserWindow, ipcMain, session } from 'electron';
+import { IPC_EVENTS } from '../../../../shared/constants';
 import { getAssetPath } from '../../../paths';
 
 let ssoWindow: BrowserWindow | null = null;
@@ -31,7 +32,7 @@ export const openSSOWindow = async (url: string, sender?: Electron.WebContents, 
         ssoWindow = null;
         // Notify renderer that the SSO window has closed
         if (sender && !sender.isDestroyed()) {
-            sender.send('auth:sso-closed', flowId);
+            sender.send(IPC_EVENTS.AUTH_SSO_CLOSED, flowId);
         }
     });
 
@@ -39,11 +40,11 @@ export const openSSOWindow = async (url: string, sender?: Electron.WebContents, 
     // but for now relying on user to close window is safer for generic SSO.
 };
 
-ipcMain.on('auth:open-sso', (event, url: string, flowId?: string) => {
+ipcMain.on(IPC_EVENTS.AUTH_OPEN_SSO, (event, url: string, flowId?: string) => {
     openSSOWindow(url, event.sender, flowId);
 });
 
-ipcMain.on('auth:close-sso', () => {
+ipcMain.on(IPC_EVENTS.AUTH_CLOSE_SSO, () => {
     if (ssoWindow && !ssoWindow.isDestroyed()) {
         ssoWindow.close();
     }

@@ -14,6 +14,7 @@ import { hasFeature } from '/@/shared/api/utils';
 import { toast } from '/@/shared/components/toast/toast';
 import { ServerListItemWithCredential } from '/@/shared/types/domain-types';
 import { ServerFeature } from '/@/shared/types/features-types';
+import { API_RESPONSE_KEYS } from '/@/shared/constants';
 
 const c = initContract();
 const localSettings = isElectron() ? window.api.localSettings : null;
@@ -344,16 +345,16 @@ axiosClient.defaults.paramsSerializer = (params) => {
 axiosClient.interceptors.response.use(
     (response) => {
         const data = response.data;
-        if (data?.['subsonic-response'] && data['subsonic-response']?.status !== 'ok') {
+        if (data?.[API_RESPONSE_KEYS.SUBSONIC_RESPONSE] && data[API_RESPONSE_KEYS.SUBSONIC_RESPONSE]?.status !== 'ok') {
             // Suppress code related to non-linked lastfm or spotify from Navidrome
-            if (data['subsonic-response'].error.code !== 0) {
+            if (data[API_RESPONSE_KEYS.SUBSONIC_RESPONSE].error.code !== 0) {
                 toast.error({
-                    message: data['subsonic-response'].error.message,
+                    message: data[API_RESPONSE_KEYS.SUBSONIC_RESPONSE].error.message,
                     title: i18n.t('error.genericError', { postProcess: 'sentenceCase' }) as string,
                 });
 
                 // Since we do status === 200, override this value with the error code
-                response.status = data['subsonic-response'].error.code;
+                response.status = data[API_RESPONSE_KEYS.SUBSONIC_RESPONSE].error.code;
             }
         }
 
@@ -387,14 +388,18 @@ const parsePath = (fullPath: string) => {
 };
 
 const silentlyTransformResponse = (data: any) => {
-    const jsonBody = JSON.parse(data);
-    const status = jsonBody?.['subsonic-response']?.status;
+    try {
+        const jsonBody = JSON.parse(data);
+        const status = jsonBody?.[API_RESPONSE_KEYS.SUBSONIC_RESPONSE]?.status;
 
-    if (status && status !== 'ok') {
-        jsonBody['subsonic-response'].error.code = 0;
+        if (status && status !== 'ok') {
+            jsonBody[API_RESPONSE_KEYS.SUBSONIC_RESPONSE].error.code = 0;
+        }
+
+        return jsonBody;
+    } catch (e) {
+        return data;
     }
-
-    return jsonBody;
 };
 
 export const ssApiClient = (args: {
@@ -461,15 +466,15 @@ export const ssApiClient = (args: {
                         request,
                     );
 
-                if (!result.data?.['subsonic-response']) {
-                    if (server?.ssoEnabled) {
+                if (!result.data?.[API_RESPONSE_KEYS.SUBSONIC_RESPONSE]) {
+                    if (server?.ssoEnabled && !silent) {
                         authenticationFailure(server);
                     }
                     throw new Error('Invalid Subsonic response');
                 }
 
                 return {
-                    body: result.data['subsonic-response'],
+                    body: result.data[API_RESPONSE_KEYS.SUBSONIC_RESPONSE],
                     headers: result.headers as any,
                     status: result.status,
                 };

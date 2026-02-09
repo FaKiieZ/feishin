@@ -29,6 +29,7 @@ import { useFocusTrap } from '/@/shared/hooks/use-focus-trap';
 import { useForm } from '/@/shared/hooks/use-form';
 import { AuthenticationResponse, ServerListItemWithCredential } from '/@/shared/types/domain-types';
 import { DiscoveredServerItem, ServerType, toServerType } from '/@/shared/types/types';
+import { IPC_EVENTS, SSO_FLOW_IDS, TIMEOUTS } from '/@/shared/constants';
 
 const autodiscover = isElectron() ? window.api.autodiscover : null;
 const localSettings = isElectron() ? window.api.localSettings : null;
@@ -156,17 +157,26 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
                     withCloseButton: false,
                 });
                 
-                (window.api as any).ipc.send('auth:open-sso', ssoUrl, 'add-server');
-
+                (window.api as any).ipc.send(IPC_EVENTS.AUTH_OPEN_SSO, ssoUrl, SSO_FLOW_IDS.ADD_SERVER);
+ 
                 // Wait for the window to close
-                await new Promise<void>((resolve) => {
-                    const handleClosed = (_event: any, flowId?: string) => {
-                         if (flowId === 'add-server') {
-                            (window.api as any).ipc.off('auth:sso-closed', handleClosed);
-                            resolve();
-                         }
-                    };
-                     (window.api as any).ipc.on('auth:sso-closed', handleClosed);
+                await new Promise<void>((resolve, reject) => {
+                     let timeoutId: number;
+
+                     const handleClosed = (_event: any, flowId?: string) => {
+                          if (flowId === SSO_FLOW_IDS.ADD_SERVER) {
+                             (window.api as any).ipc.off(IPC_EVENTS.AUTH_SSO_CLOSED, handleClosed);
+                             window.clearTimeout(timeoutId);
+                             resolve();
+                          }
+                     };
+
+                     timeoutId = window.setTimeout(() => {
+                        (window.api as any).ipc.off(IPC_EVENTS.AUTH_SSO_CLOSED, handleClosed);
+                        reject(new Error('SSO Login timed out'));
+                     }, TIMEOUTS.SSO_WINDOW_CLOSE);
+
+                      (window.api as any).ipc.on(IPC_EVENTS.AUTH_SSO_CLOSED, handleClosed);
                 });
                 
                 toast.hide(toastId);

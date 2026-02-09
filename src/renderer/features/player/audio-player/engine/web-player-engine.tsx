@@ -5,6 +5,7 @@ import { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'r
 
 import { AudioPlayer, PlayerOnProgressProps } from '/@/renderer/features/player/audio-player/types';
 import { convertToLogVolume } from '/@/renderer/features/player/audio-player/utils/player-utils';
+import { useAuthStore } from '/@/renderer/store';
 import { LogCategory, logFn } from '/@/renderer/utils/logger';
 import { logMsg } from '/@/renderer/utils/logger-message';
 import { PlayerStatus } from '/@/shared/types/types';
@@ -169,6 +170,16 @@ export const WebPlayerEngine = (props: WebPlayerEngineProps) => {
                 error?.code !== MediaError.MEDIA_ERR_DECODE &&
                 error?.code !== MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED
             ) {
+                return;
+            }
+
+            // Don't skip to next song if we're in the middle of re-authentication
+            // The authenticationFailure() function already pauses playback
+            const currentServer = useAuthStore.getState().currentServer;
+            if (currentServer?.ssoEnabled) {
+                logFn.warn('Playback error during SSO session - not skipping to prevent loop', {
+                    category: LogCategory.PLAYER,
+                });
                 return;
             }
 

@@ -38,6 +38,48 @@ const isNetworkError = (error: any): boolean => {
     );
 };
 
+// Helper to fetch and update server version/features
+// Returns true if successful or partial success (features updated), false if basic connectivity failed (though here we only warn)
+const updateServerFeaturesAndVersion = async (
+    serverId: string,
+    serverName: string,
+    updateServer: (id: string, args: Partial<any>) => void,
+) => {
+    try {
+        const serverInfo = await controller.getServerInfo({
+            apiClientProps: {
+                serverId,
+            },
+        });
+
+        if (serverInfo && serverInfo.id === serverId) {
+            const { features, version } = serverInfo;
+            const currentServer = getServerById(serverId);
+
+            if (
+                currentServer &&
+                (version !== currentServer.version || !isEqual(features, currentServer.features))
+            ) {
+                updateServer(serverId, {
+                    features,
+                    version,
+                });
+            }
+        }
+    } catch (serverInfoError) {
+        // Log but don't fail authentication if server info fetch fails
+        logFn.warn(logMsg[LogCategory.SYSTEM].serverAuthenticationSuccess, {
+            category: LogCategory.SYSTEM,
+            meta: {
+                action: 'server_info_fetch_failed',
+                error: (serverInfoError as Error).message,
+                serverId,
+                serverName,
+            },
+        });
+    }
+};
+
 export const useServerAuthenticated = () => {
     const priorServerId = useRef<string | undefined>(undefined);
     const server = useCurrentServer();
@@ -92,41 +134,13 @@ export const useServerAuthenticated = () => {
                         isAdmin: userInfo.isAdmin,
                     });
 
+
                     // Fetch and update server version and features
-                    try {
-                        const serverInfo = await controller.getServerInfo({
-                            apiClientProps: {
-                                serverId: serverWithAuth.id,
-                            },
-                        });
-
-                        if (serverInfo && serverInfo.id === serverWithAuth.id) {
-                            const { features, version } = serverInfo;
-                            const currentServer = getServerById(serverWithAuth.id);
-
-                            if (
-                                currentServer &&
-                                (version !== currentServer.version ||
-                                    !isEqual(features, currentServer.features))
-                            ) {
-                                updateServer(serverWithAuth.id, {
-                                    features,
-                                    version,
-                                });
-                            }
-                        }
-                    } catch (serverInfoError) {
-                        // Log but don't fail authentication if server info fetch fails
-                        logFn.warn(logMsg[LogCategory.SYSTEM].serverAuthenticationSuccess, {
-                            category: LogCategory.SYSTEM,
-                            meta: {
-                                action: 'server_info_fetch_failed',
-                                error: (serverInfoError as Error).message,
-                                serverId: serverWithAuth.id,
-                                serverName: serverWithAuth.name,
-                            },
-                        });
-                    }
+                    await updateServerFeaturesAndVersion(
+                        serverWithAuth.id,
+                        serverWithAuth.name,
+                        updateServer,
+                    );
 
                     logFn.info(logMsg[LogCategory.SYSTEM].serverAuthenticationSuccess, {
                         category: LogCategory.SYSTEM,
@@ -203,40 +217,11 @@ export const useServerAuthenticated = () => {
                             updateServer(serverWithAuth.id, updatedServer);
 
                             // Fetch and update server version and features
-                            try {
-                                const serverInfo = await controller.getServerInfo({
-                                    apiClientProps: {
-                                        serverId: serverWithAuth.id,
-                                    },
-                                });
-
-                                if (serverInfo && serverInfo.id === serverWithAuth.id) {
-                                    const { features, version } = serverInfo;
-                                    const currentServer = getServerById(serverWithAuth.id);
-
-                                    if (
-                                        currentServer &&
-                                        (version !== currentServer.version ||
-                                            !isEqual(features, currentServer.features))
-                                    ) {
-                                        updateServer(serverWithAuth.id, {
-                                            features,
-                                            version,
-                                        });
-                                    }
-                                }
-                            } catch (serverInfoError) {
-                                // Log but don't fail authentication if server info fetch fails
-                                logFn.warn(logMsg[LogCategory.SYSTEM].serverAuthenticationSuccess, {
-                                    category: LogCategory.SYSTEM,
-                                    meta: {
-                                        action: 'server_info_fetch_failed',
-                                        error: (serverInfoError as Error).message,
-                                        serverId: serverWithAuth.id,
-                                        serverName: serverWithAuth.name,
-                                    },
-                                });
-                            }
+                            await updateServerFeaturesAndVersion(
+                                serverWithAuth.id,
+                                serverWithAuth.name,
+                                updateServer,
+                            );
 
                             logFn.info(logMsg[LogCategory.SYSTEM].serverAuthenticationSuccess, {
                                 category: LogCategory.SYSTEM,

@@ -4,6 +4,7 @@ import { useRef, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '/@/renderer/api';
+import { IPC_EVENTS, SSO_FLOW_IDS } from '/@/shared/constants';
 import { useAuthStore } from '/@/renderer/store';
 import { Button } from '/@/shared/components/button/button';
 import { Stack } from '/@/shared/components/stack/stack';
@@ -39,7 +40,7 @@ export const SSOReauthModal = () => {
         console.log('[SSOReauthModal] Opening SSO window for:', url_to_open);
         
         if (isElectron()) {
-            (window.api as any).ipc.send('auth:open-sso', url_to_open, 'reauth');
+            window.api.ipc.send(IPC_EVENTS.AUTH_OPEN_SSO, url_to_open, SSO_FLOW_IDS.REAUTH);
 
             // Start polling for successful connection
             stopPolling();
@@ -60,7 +61,7 @@ export const SSOReauthModal = () => {
                         // Explicitly set the current server again to ensure it is persisted and selected on reload
                         useAuthStore.getState().actions.setCurrentServer(currentServer);
                         
-                        (window.api as any).ipc.send('auth:close-sso');
+                        (window.api as any).ipc.send(IPC_EVENTS.AUTH_CLOSE_SSO);
                         stopPolling();
                         setOpened(false);
                         window.location.reload();
@@ -77,7 +78,6 @@ export const SSOReauthModal = () => {
 
     useEffect(() => {
         const handleSSOSessionExpired = () => {
-            console.log('Received auth:sso-session-expired event');
             
             if (isElectron()) {
                 // In Electron, we want to open the window directly without showing the modal
@@ -89,24 +89,22 @@ export const SSOReauthModal = () => {
         };
 
         const handleSSOClosed = (_event: any, flowId?: string) => {
-            if (flowId !== 'reauth') return;
-
-            console.log('Received auth:sso-closed event for reauth');
+            if (flowId !== SSO_FLOW_IDS.REAUTH) return;
             setOpened(false);
             stopPolling();
             window.location.reload(); 
         };
 
-        window.addEventListener('auth:sso-session-expired', handleSSOSessionExpired);
+        window.addEventListener(IPC_EVENTS.AUTH_SSO_SESSION_EXPIRED, handleSSOSessionExpired);
         if (isElectron()) {
-             (window.api as any)?.ipc.on('auth:sso-closed', handleSSOClosed);
+             window.api.ipc.on(IPC_EVENTS.AUTH_SSO_CLOSED, handleSSOClosed);
         }
 
         return () => {
             stopPolling();
-            window.removeEventListener('auth:sso-session-expired', handleSSOSessionExpired);
+            window.removeEventListener(IPC_EVENTS.AUTH_SSO_SESSION_EXPIRED, handleSSOSessionExpired);
             if (isElectron()) {
-                 (window.api as any)?.ipc.off('auth:sso-closed', handleSSOClosed);
+                 window.api.ipc.off(IPC_EVENTS.AUTH_SSO_CLOSED, handleSSOClosed);
             }
         };
     }, []);

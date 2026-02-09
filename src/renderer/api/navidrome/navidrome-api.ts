@@ -13,6 +13,8 @@ import { ndType } from '/@/shared/api/navidrome/navidrome-types';
 import { resultWithHeaders } from '/@/shared/api/utils';
 import { toast } from '/@/shared/components/toast/toast';
 import { ServerListItemWithCredential } from '/@/shared/types/domain-types';
+import { HEADERS } from '/@/shared/constants';
+import { LogCategory, logFn } from '/@/renderer/utils/logger';
 
 const localSettings = isElectron() ? window.api.localSettings : null;
 
@@ -255,6 +257,8 @@ let shouldDelay = false;
 const RETRY_DELAY_MS = 1000;
 const MAX_RETRIES = 5;
 
+// Simple polling mechanism to wait for re-authentication to complete.
+// This acts as a pseudo-mutex to prevent multiple concurrent requests from failing auth simultaneously.
 const waitForResult = async (count = 0): Promise<void> => {
     return new Promise((resolve) => {
         if (count === MAX_RETRIES || !shouldDelay) resolve();
@@ -275,7 +279,7 @@ axiosClient.interceptors.response.use(
         const serverId = useAuthStore.getState().currentServer?.id;
 
         if (serverId) {
-            const headerCredential = response.headers['x-nd-authorization'] as string | undefined;
+            const headerCredential = response.headers[HEADERS.NAVIDROME_AUTHORIZATION] as string | undefined;
 
             if (headerCredential) {
                 useAuthStore.getState().actions.updateServer(serverId, {
@@ -364,7 +368,7 @@ axiosClient.interceptors.response.use(
                             ndCredential: newCredential,
                         });
 
-                        error.config.headers['x-nd-authorization'] = `Bearer ${newCredential}`;
+                        error.config.headers[HEADERS.NAVIDROME_AUTHORIZATION] = `Bearer ${newCredential}`;
 
                         authSuccess = true;
 
@@ -375,9 +379,9 @@ axiosClient.interceptors.response.use(
                             console.error('Error when trying to reauthenticate: ', newError);
 
                             if (isAxiosError(newError) && newError.code === 'ERR_NETWORK') {
-                                console.log(
-                                    'Network error during reauthentication - preserving credentials',
-                                );
+                                logFn.warn('Network error during reauthentication - preserving credentials', {
+                                    category: LogCategory.SYSTEM,
+                                });
                             } else {
                                 limitedFail(currentServer);
                             }
@@ -392,7 +396,9 @@ axiosClient.interceptors.response.use(
             }
 
             if (isAxiosError(error) && error.code === 'ERR_NETWORK') {
-                console.log('Network error during authentication - preserving credentials');
+                logFn.warn('Network error during authentication - preserving credentials', {
+                    category: LogCategory.SYSTEM,
+                });
             } else {
                 limitedFail(currentServer);
             }
@@ -431,7 +437,7 @@ export const ndApiClient = (args: {
                     data: body,
                     headers: {
                         ...headers,
-                        ...(token && { 'x-nd-authorization': `Bearer ${token}` }),
+                        ...(token && { [HEADERS.NAVIDROME_AUTHORIZATION]: `Bearer ${token}` }),
                     },
                     method: method as Method,
                     params,
