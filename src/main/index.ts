@@ -211,8 +211,6 @@ if (isDevelopment) {
     app.setPath('userData', devUserDataPath);
 }
 
-
-
 export const getMainWindow = () => {
     return mainWindow;
 };

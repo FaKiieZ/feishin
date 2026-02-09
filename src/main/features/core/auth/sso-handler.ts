@@ -4,7 +4,11 @@ import { getAssetPath } from '../../../paths';
 
 let ssoWindow: BrowserWindow | null = null;
 
-export const openSSOWindow = async (url: string, sender?: Electron.WebContents, flowId?: string) => {
+export const openSSOWindow = async (
+    url: string,
+    sender?: Electron.WebContents,
+    flowId?: string,
+) => {
     if (ssoWindow && !ssoWindow.isDestroyed()) {
         ssoWindow.focus();
         ssoWindow.loadURL(url);
@@ -36,7 +40,7 @@ export const openSSOWindow = async (url: string, sender?: Electron.WebContents, 
         }
     });
 
-    // Optional: Check for successful redirect if possible, 
+    // Optional: Check for successful redirect if possible,
     // but for now relying on user to close window is safer for generic SSO.
 };
 

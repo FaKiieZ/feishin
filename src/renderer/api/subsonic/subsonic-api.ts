@@ -345,7 +345,10 @@ axiosClient.defaults.paramsSerializer = (params) => {
 axiosClient.interceptors.response.use(
     (response) => {
         const data = response.data;
-        if (data?.[API_RESPONSE_KEYS.SUBSONIC_RESPONSE] && data[API_RESPONSE_KEYS.SUBSONIC_RESPONSE]?.status !== 'ok') {
+        if (
+            data?.[API_RESPONSE_KEYS.SUBSONIC_RESPONSE] &&
+            data[API_RESPONSE_KEYS.SUBSONIC_RESPONSE]?.status !== 'ok'
+        ) {
             // Suppress code related to non-linked lastfm or spotify from Navidrome
             if (data[API_RESPONSE_KEYS.SUBSONIC_RESPONSE].error.code !== 0) {
                 toast.error({

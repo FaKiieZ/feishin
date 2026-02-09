@@ -153,32 +153,37 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
                 const toastId = toast.show({
                     autoClose: false,
                     loading: true,
-                    message: 'Opening SSO Login Window... Please login and close the window to continue.',
+                    message:
+                        'Opening SSO Login Window... Please login and close the window to continue.',
                     withCloseButton: false,
                 });
-                
-                (window.api as any).ipc.send(IPC_EVENTS.AUTH_OPEN_SSO, ssoUrl, SSO_FLOW_IDS.ADD_SERVER);
- 
+
+                (window.api as any).ipc.send(
+                    IPC_EVENTS.AUTH_OPEN_SSO,
+                    ssoUrl,
+                    SSO_FLOW_IDS.ADD_SERVER,
+                );
+
                 // Wait for the window to close
                 await new Promise<void>((resolve, reject) => {
-                     let timeoutId: number;
+                    let timeoutId: number;
 
-                     const handleClosed = (_event: any, flowId?: string) => {
-                          if (flowId === SSO_FLOW_IDS.ADD_SERVER) {
-                             (window.api as any).ipc.off(IPC_EVENTS.AUTH_SSO_CLOSED, handleClosed);
-                             window.clearTimeout(timeoutId);
-                             resolve();
-                          }
-                     };
+                    const handleClosed = (_event: any, flowId?: string) => {
+                        if (flowId === SSO_FLOW_IDS.ADD_SERVER) {
+                            (window.api as any).ipc.off(IPC_EVENTS.AUTH_SSO_CLOSED, handleClosed);
+                            window.clearTimeout(timeoutId);
+                            resolve();
+                        }
+                    };
 
-                     timeoutId = window.setTimeout(() => {
+                    timeoutId = window.setTimeout(() => {
                         (window.api as any).ipc.off(IPC_EVENTS.AUTH_SSO_CLOSED, handleClosed);
                         reject(new Error('SSO Login timed out'));
-                     }, TIMEOUTS.SSO_WINDOW_CLOSE);
+                    }, TIMEOUTS.SSO_WINDOW_CLOSE);
 
-                      (window.api as any).ipc.on(IPC_EVENTS.AUTH_SSO_CLOSED, handleClosed);
+                    (window.api as any).ipc.on(IPC_EVENTS.AUTH_SSO_CLOSED, handleClosed);
                 });
-                
+
                 toast.hide(toastId);
             }
 
@@ -200,7 +205,9 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
 
             if (!data.userId && !data.username) {
                 return toast.error({
-                    message: t('error.authenticationFailed', { postProcess: 'sentenceCase' }) + ' (Missing user info)',
+                    message:
+                        t('error.authenticationFailed', { postProcess: 'sentenceCase' }) +
+                        ' (Missing user info)',
                 });
             }
 

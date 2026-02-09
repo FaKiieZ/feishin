@@ -13,7 +13,6 @@ import {
 } from '/@/shared/types/domain-types';
 export type { ServerListItem } from '/@/shared/types/domain-types';
 
-
 export enum ItemListKey {
     ALBUM = LibraryItem.ALBUM,
     ALBUM_ARTIST = LibraryItem.ALBUM_ARTIST,
@@ -250,8 +249,6 @@ export type QueryBuilderRule = {
     uniqueId: string;
     value?: any | Date | null | number | string | undefined;
 };
-
-
 
 export type SongState = {
     position?: number;

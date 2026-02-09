@@ -35,10 +35,15 @@ export const CacheSettings = memo(() => {
                 }
 
                 toast.success({
-                    message: t(cookies ? 'setting.clearCookiesSuccess' : 'setting.clearCacheSuccess', { 
-                        defaultValue: cookies ? 'Cookies cleared successfully' : 'Cache cleared successfully',
-                        postProcess: 'sentenceCase' 
-                    }),
+                    message: t(
+                        cookies ? 'setting.clearCookiesSuccess' : 'setting.clearCacheSuccess',
+                        {
+                            defaultValue: cookies
+                                ? 'Cookies cleared successfully'
+                                : 'Cache cleared successfully',
+                            postProcess: 'sentenceCase',
+                        },
+                    ),
                 });
             } catch (error) {
                 console.error(error);
@@ -61,7 +66,7 @@ export const CacheSettings = memo(() => {
             ),
             title: t(`setting.${key}`, {
                 defaultValue: cookies ? 'Clear Cookies' : undefined,
-                postProcess: 'sentenceCase' 
+                postProcess: 'sentenceCase',
             }),
         });
     };
@@ -119,7 +124,10 @@ export const CacheSettings = memo(() => {
                 postProcess: 'sentenceCase',
             }),
             isHidden: !browser,
-            title: t('setting.clearCookies', { defaultValue: 'Clear Cookies', postProcess: 'sentenceCase' }),
+            title: t('setting.clearCookies', {
+                defaultValue: 'Clear Cookies',
+                postProcess: 'sentenceCase',
+            }),
         },
     ];
 

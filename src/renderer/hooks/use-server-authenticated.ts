@@ -134,7 +134,6 @@ export const useServerAuthenticated = () => {
                         isAdmin: userInfo.isAdmin,
                     });
 
-
                     // Fetch and update server version and features
                     await updateServerFeaturesAndVersion(
                         serverWithAuth.id,

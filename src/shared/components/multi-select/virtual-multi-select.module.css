@@ -21,7 +21,6 @@
     opacity: 0.6;
 }
 
-
 .selected-option {
     cursor: pointer;
     transition: background-color 0.15s ease;

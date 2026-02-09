@@ -279,7 +279,9 @@ axiosClient.interceptors.response.use(
         const serverId = useAuthStore.getState().currentServer?.id;
 
         if (serverId) {
-            const headerCredential = response.headers[HEADERS.NAVIDROME_AUTHORIZATION] as string | undefined;
+            const headerCredential = response.headers[HEADERS.NAVIDROME_AUTHORIZATION] as
+                | string
+                | undefined;
 
             if (headerCredential) {
                 useAuthStore.getState().actions.updateServer(serverId, {
@@ -368,7 +370,8 @@ axiosClient.interceptors.response.use(
                             ndCredential: newCredential,
                         });
 
-                        error.config.headers[HEADERS.NAVIDROME_AUTHORIZATION] = `Bearer ${newCredential}`;
+                        error.config.headers[HEADERS.NAVIDROME_AUTHORIZATION] =
+                            `Bearer ${newCredential}`;
 
                         authSuccess = true;
 
@@ -379,9 +382,12 @@ axiosClient.interceptors.response.use(
                             console.error('Error when trying to reauthenticate: ', newError);
 
                             if (isAxiosError(newError) && newError.code === 'ERR_NETWORK') {
-                                logFn.warn('Network error during reauthentication - preserving credentials', {
-                                    category: LogCategory.SYSTEM,
-                                });
+                                logFn.warn(
+                                    'Network error during reauthentication - preserving credentials',
+                                    {
+                                        category: LogCategory.SYSTEM,
+                                    },
+                                );
                             } else {
                                 limitedFail(currentServer);
                             }

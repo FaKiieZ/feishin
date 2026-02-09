@@ -145,8 +145,8 @@ table {
 
 /* stylelint-disable selector-not-notation */
 .fs-image-module-image:not(.ag-cell *)
-:not(.fs-left-controls-module-image *)
-:not(.fs-sidebar-playlist-list-module-row-group *) {
+    :not(.fs-left-controls-module-image *)
+    :not(.fs-sidebar-playlist-list-module-row-group *) {
     border-radius: 18px !important;
 }
 /* stylelint-enable selector-not-notation */
