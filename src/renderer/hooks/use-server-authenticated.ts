@@ -264,6 +264,23 @@ export const useServerAuthenticated = () => {
                         }
                     }
 
+                    // If it's an SSO server and we get a forbidden error, trigger the re-auth flow
+                    if (isForbiddenError && serverWithAuth.ssoEnabled) {
+                        logFn.info(logMsg[LogCategory.SYSTEM].authenticatingServer, {
+                            category: LogCategory.SYSTEM,
+                            meta: {
+                                method: 'authenticate',
+                                reason: 'getUserInfo failed with forbidden error (SSO)',
+                                serverId: serverWithAuth.id,
+                                serverName: serverWithAuth.name,
+                                serverType: serverWithAuth.type,
+                            },
+                        });
+
+                        window.dispatchEvent(new CustomEvent('auth:sso-session-expired'));
+                        return;
+                    }
+
                     // If not a forbidden error, or no password saved, rethrow the error
                     throw getUserInfoError;
                 }

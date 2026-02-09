@@ -289,7 +289,7 @@ axiosClient.interceptors.response.use(
         return response;
     },
     (error) => {
-        if (error.response && error.response.status === 401) {
+        if (error?.response?.status === 401) {
             const currentServer = useAuthStore.getState().currentServer;
 
             if (localSettings && currentServer?.savePassword) {
@@ -439,6 +439,15 @@ export const ndApiClient = (args: {
                     withCredentials: server?.ssoEnabled,
                     url: `${baseUrl}/${api}`,
                 });
+
+                // Check for invalid response (e.g. HTML login page from SSO proxy returning 200 OK)
+                if (typeof result.data === 'string') {
+                    if (server?.ssoEnabled) {
+                        authenticationFailure(server);
+                    }
+                    throw new Error('Invalid Navidrome response (String/HTML received)');
+                }
+
                 return {
                     body: { data: result.data, headers: result.headers },
                     headers: result.headers as any,

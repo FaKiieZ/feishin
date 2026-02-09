@@ -12,23 +12,88 @@ import { Text } from '/@/shared/components/text/text';
 export const SSOReauthModal = () => {
     const { t } = useTranslation();
     const [opened, setOpened] = useState(false);
-    const currentServer = useAuthStore((state) => state.currentServer);
+    
+    // We use a ref to track if we're currently polling/handling an SSO flow
+    // to prevent duplicate triggers or weird state
+    const isHandlingRef = useRef(false);
+    const pollingRef = useRef<number | null>(null);
+
+    const stopPolling = () => {
+        if (pollingRef.current) {
+            window.clearInterval(pollingRef.current);
+            pollingRef.current = null;
+        }
+        isHandlingRef.current = false;
+    };
+
+    const handleLogin = () => {
+        // Always get fresh state from store directly to avoid stale closures
+        const currentServer = useAuthStore.getState().currentServer;
+
+        if (!currentServer) {
+            console.error('[SSOReauthModal] No current server found');
+            return;
+        }
+
+        const url_to_open = currentServer.ssoUrl || currentServer.url;
+        console.log('[SSOReauthModal] Opening SSO window for:', url_to_open);
+        
+        if (isElectron()) {
+            (window.api as any).ipc.send('auth:open-sso', url_to_open, 'reauth');
+
+            // Start polling for successful connection
+            stopPolling();
+            isHandlingRef.current = true;
+            
+            pollingRef.current = window.setInterval(async () => {
+                if (!currentServer.userId) return;
+
+                try {
+                    // Try to fetch user info. If it succeeds, the SSO cookie is valid.
+                    const userInfo = await api.controller.getUserInfo({
+                        apiClientProps: { serverId: currentServer.id, silent: true },
+                        query: { id: currentServer.userId, username: currentServer.username }
+                    });
+
+                    if (userInfo) {
+                        // Success! Close SSO window and reload
+                        // Explicitly set the current server again to ensure it is persisted and selected on reload
+                        useAuthStore.getState().actions.setCurrentServer(currentServer);
+                        
+                        (window.api as any).ipc.send('auth:close-sso');
+                        stopPolling();
+                        setOpened(false);
+                        window.location.reload();
+                    }
+                } catch (e) {
+                    // Ignore errors (401, network, etc) while polling
+                }
+            }, 2000);
+        } else {
+            // Web fallback: open in new tab
+            window.open(url_to_open, '_blank');
+        }
+    };
 
     useEffect(() => {
         const handleSSOSessionExpired = () => {
             console.log('Received auth:sso-session-expired event');
-            setOpened(true);
+            
+            if (isElectron()) {
+                // In Electron, we want to open the window directly without showing the modal
+                // unless it fails or something weird happens. But user requested "just open up ... directly".
+                handleLogin();
+            } else {
+                setOpened(true);
+            }
         };
 
         const handleSSOClosed = (_event: any, flowId?: string) => {
-            // Only handle if it matches our flow (or is undefined for backward compatibility if needed, but better strict)
             if (flowId !== 'reauth') return;
 
             console.log('Received auth:sso-closed event for reauth');
             setOpened(false);
             stopPolling();
-            // Optionally reload or retry requests here if needed
-            // For now, user can click retry or navigate manually
             window.location.reload(); 
         };
 
@@ -46,56 +111,29 @@ export const SSOReauthModal = () => {
         };
     }, []);
 
-    const pollingRef = useRef<number | null>(null);
-
-    const stopPolling = () => {
-        if (pollingRef.current) {
-            window.clearInterval(pollingRef.current);
-            pollingRef.current = null;
+    // Auto-open SSO window when the modal opens (only relevant for Web now, or if we decide to show modal in Electron later)
+    useEffect(() => {
+        if (opened && !isElectron()) {
+             // For web, we might still want to wait for user click due to popup blockers,
+             // so maybe don't auto-open here? 
+             // But valid point: if they are on web, 'handleLogin' uses window.open which might be blocked.
+             // So we let them click the button.
         }
-    };
-
-    const handleLogin = () => {
-        if (!currentServer) return;
-        
-        const url_to_open = currentServer.ssoUrl || currentServer.url;
-
-        if (isElectron()) {
-            (window.api as any).ipc.send('auth:open-sso', url_to_open, 'reauth');
-
-            // Start polling for successful connection
-            stopPolling();
-            pollingRef.current = window.setInterval(async () => {
-                if (!currentServer.userId) return;
-
-                try {
-                    // Try to fetch user info. If it succeeds, the SSO cookie is valid.
-                    const userInfo = await api.controller.getUserInfo({
-                        apiClientProps: { serverId: currentServer.id },
-                        query: { id: currentServer.userId, username: currentServer.username }
-                    });
-
-                    if (userInfo) {
-                        // Success! Close SSO window and reload
-                        (window.api as any).ipc.send('auth:close-sso');
-                        stopPolling();
-                        setOpened(false);
-                        window.location.reload();
-                    }
-                } catch (e) {
-                    // Ignore errors (401, network, etc) while polling
-                }
-            }, 2000);
-        } else {
-            // Web fallback: open in new tab
-            window.open(url_to_open, '_blank');
-        }
-    };
+    }, [opened]);
 
     // Clean up on unmount or close
     useEffect(() => {
         return () => stopPolling();
     }, []);
+
+    // In Electron, we render nothing (invisible handler).
+    // In Web, we render the modal.
+    if (isElectron()) {
+        return null;
+    }
+    
+    // For Web, we need the currentServer for the UI text
+    const currentServer = useAuthStore((state) => state.currentServer);
 
     return (
         <Modal
@@ -115,13 +153,11 @@ export const SSOReauthModal = () => {
                     })}
                 </Text>
                 <Button onClick={handleLogin} fullWidth>
-                    {isElectron() ? t('auth.openSsoWindow', { defaultValue: 'Open SSO Login Window' }) : t('auth.openLoginTab', { defaultValue: 'Open Login Tab' })}
+                    {t('auth.openLoginTab', { defaultValue: 'Open Login Tab' })}
                 </Button>
-                {!isElectron() && (
-                    <Button variant="outline" onClick={() => setOpened(false)} fullWidth>
-                        {t('auth.iHaveLoggedIn', { defaultValue: 'I have logged in' })}
-                    </Button>
-                )}
+                <Button variant="outline" onClick={() => setOpened(false)} fullWidth>
+                    {t('auth.iHaveLoggedIn', { defaultValue: 'I have logged in' })}
+                </Button>
             </Stack>
         </Modal>
     );

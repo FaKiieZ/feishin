@@ -417,6 +417,7 @@ type BaseEndpointArgs = {
         server?: null | ServerListItemWithCredential;
         serverId: string;
         signal?: AbortSignal;
+        silent?: boolean;
     };
     context?: {
         pathReplace?: string;
@@ -1679,6 +1680,7 @@ type BaseEndpointArgsWithServer = {
         server: null | ServerListItemWithCredential;
         serverId: string;
         signal?: AbortSignal;
+        silent?: boolean;
     };
     context?: {
         pathReplace?: string;

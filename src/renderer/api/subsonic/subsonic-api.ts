@@ -1,10 +1,13 @@
 import { initClient, initContract } from '@ts-rest/core';
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse, isAxiosError } from 'axios';
+import isElectron from 'is-electron';
 import omitBy from 'lodash/omitBy';
 import qs from 'qs';
 import { z } from 'zod';
 
 import i18n from '/@/i18n/i18n';
+import { authenticationFailure } from '/@/renderer/api/utils';
+import { useAuthStore } from '/@/renderer/store';
 import { getServerUrl } from '/@/renderer/utils/normalize-server-url';
 import { ssType } from '/@/shared/api/subsonic/subsonic-types';
 import { hasFeature } from '/@/shared/api/utils';
@@ -13,6 +16,7 @@ import { ServerListItemWithCredential } from '/@/shared/types/domain-types';
 import { ServerFeature } from '/@/shared/types/features-types';
 
 const c = initContract();
+const localSettings = isElectron() ? window.api.localSettings : null;
 
 export const contract = c.router({
     authenticate: {
@@ -340,7 +344,7 @@ axiosClient.defaults.paramsSerializer = (params) => {
 axiosClient.interceptors.response.use(
     (response) => {
         const data = response.data;
-        if (data['subsonic-response'].status !== 'ok') {
+        if (data?.['subsonic-response'] && data['subsonic-response']?.status !== 'ok') {
             // Suppress code related to non-linked lastfm or spotify from Navidrome
             if (data['subsonic-response'].error.code !== 0) {
                 toast.error({
@@ -356,6 +360,16 @@ axiosClient.interceptors.response.use(
         return response;
     },
     (error) => {
+        if (error?.response?.status === 401) {
+            const currentServer = useAuthStore.getState().currentServer;
+
+            if (localSettings && currentServer?.savePassword) {
+                if (currentServer.ssoEnabled) {
+                    authenticationFailure(currentServer);
+                    return Promise.reject(error);
+                }
+            }
+        }
         return Promise.reject(error);
     },
 );
@@ -374,7 +388,7 @@ const parsePath = (fullPath: string) => {
 
 const silentlyTransformResponse = (data: any) => {
     const jsonBody = JSON.parse(data);
-    const status = jsonBody ? jsonBody['subsonic-response']?.status : undefined;
+    const status = jsonBody?.['subsonic-response']?.status;
 
     if (status && status !== 'ok') {
         jsonBody['subsonic-response'].error.code = 0;
@@ -446,6 +460,13 @@ export const ssApiClient = (args: {
                     await axiosClient.request<z.infer<typeof ssType._response.baseResponse>>(
                         request,
                     );
+
+                if (!result.data?.['subsonic-response']) {
+                    if (server?.ssoEnabled) {
+                        authenticationFailure(server);
+                    }
+                    throw new Error('Invalid Subsonic response');
+                }
 
                 return {
                     body: result.data['subsonic-response'],
