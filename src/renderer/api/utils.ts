@@ -1,8 +1,8 @@
 import { useAuthStore, usePlayerStoreBase } from '/@/renderer/store';
 import { toast } from '/@/shared/components/toast/toast';
-import { ServerListItem } from '/@/shared/types/types';
+import { ServerListItemWithCredential } from '/@/shared/types/domain-types';
 
-export const authenticationFailure = (currentServer: null | ServerListItem) => {
+export const authenticationFailure = (currentServer: null | ServerListItemWithCredential) => {
     // Pause playback immediately to prevent the player from skipping to the next song
     // and triggering a loop of re-auth attempts
     usePlayerStoreBase.getState().mediaPause();
