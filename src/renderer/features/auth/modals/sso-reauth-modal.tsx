@@ -60,6 +60,8 @@ export const SSOReauthModal = () => {
                         // Success! Close SSO window and reload
                         // Explicitly set the current server again to ensure it is persisted and selected on reload
                         useAuthStore.getState().actions.setCurrentServer(currentServer);
+                        // Clear the re-auth flag to allow track skipping again
+                        useAuthStore.getState().actions.setIsSSOReauthInProgress(false);
 
                         (window.api as any).ipc.send(IPC_EVENTS.AUTH_CLOSE_SSO);
                         stopPolling();
@@ -91,6 +93,8 @@ export const SSOReauthModal = () => {
             if (flowId !== SSO_FLOW_IDS.REAUTH) return;
             setOpened(false);
             stopPolling();
+            // Clear the re-auth flag when window is closed
+            useAuthStore.getState().actions.setIsSSOReauthInProgress(false);
             window.location.reload();
         };
 

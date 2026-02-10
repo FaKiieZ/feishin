@@ -13,6 +13,7 @@ export interface AuthSlice extends AuthState {
         deleteServer: (id: string) => void;
         getServer: (id: string) => null | ServerListItemWithCredential;
         setCurrentServer: (server: null | ServerListItemWithCredential) => void;
+        setIsSSOReauthInProgress: (value: boolean) => void;
         setMusicFolderId: (musicFolderId: string[] | undefined) => void;
         updateServer: (id: string, args: Partial<ServerListItemWithCredential>) => void;
     };
@@ -21,6 +22,7 @@ export interface AuthSlice extends AuthState {
 export interface AuthState {
     currentServer: null | ServerListItemWithCredential;
     deviceId: string;
+    isSSOReauthInProgress: boolean;
     serverList: Record<string, ServerListItemWithCredential>;
 }
 
@@ -51,6 +53,11 @@ export const useAuthStore = createWithEqualityFn<AuthSlice>()(
                     setCurrentServer: (server) => {
                         set((state) => {
                             state.currentServer = server;
+                        });
+                    },
+                    setIsSSOReauthInProgress: (value) => {
+                        set((state) => {
+                            state.isSSOReauthInProgress = value;
                         });
                     },
                     setMusicFolderId: (musicFolderId: string[] | undefined) => {
@@ -88,6 +95,7 @@ export const useAuthStore = createWithEqualityFn<AuthSlice>()(
                 },
                 currentServer: null,
                 deviceId: nanoid(),
+                isSSOReauthInProgress: false,
                 serverList: {},
             })),
             { name: 'store_authentication' },
@@ -95,6 +103,12 @@ export const useAuthStore = createWithEqualityFn<AuthSlice>()(
         {
             merge: (persistedState, currentState) => merge(currentState, persistedState),
             name: 'store_authentication',
+            partialize: (state) => {
+                // Exclude isSSOReauthInProgress from persistence as it's a transient runtime state
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { isSSOReauthInProgress, ...rest } = state;
+                return rest;
+            },
             version: 2,
         },
     ),

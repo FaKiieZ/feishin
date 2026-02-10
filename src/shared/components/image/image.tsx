@@ -6,6 +6,7 @@ import {
     type ImgHTMLAttributes,
     memo,
     ReactNode,
+    useEffect,
     useRef,
 } from 'react';
 import { Img } from 'react-image';
@@ -174,11 +175,21 @@ function ImageWithDebounce({
         ? (inViewport || hasBeenInViewportRef.current) && effectiveSrc
         : effectiveSrc;
 
-    if (enableViewport) {
-        if (shouldShowImage && effectiveSrc) {
-            addToDisplayedCache(effectiveSrc);
+    useEffect(() => {
+        if (enableViewport) {
+            // Only cache when the image is actually shown in viewport
+            if (shouldShowImage && effectiveSrc) {
+                addToDisplayedCache(effectiveSrc);
+            }
+        } else {
+            // Cache immediately when src is available (no viewport checking)
+            if (effectiveSrc) {
+                addToDisplayedCache(effectiveSrc);
+            }
         }
+    }, [enableViewport, shouldShowImage, effectiveSrc]);
 
+    if (enableViewport) {
         return (
             <ImageContainer
                 className={clsx(containerClassName, containerPropsClassName)}
@@ -212,7 +223,6 @@ function ImageWithDebounce({
         );
     }
 
-    if (effectiveSrc) addToDisplayedCache(effectiveSrc);
     return (
         <ImageContainer
             className={clsx(containerClassName, containerPropsClassName)}
@@ -280,7 +290,12 @@ function ImageWithViewport({
 
     const shouldShowImage = (inViewport || hasBeenInViewportRef.current) && src;
 
-    if (shouldShowImage && src) addToDisplayedCache(src);
+    useEffect(() => {
+        if (shouldShowImage && src) {
+            addToDisplayedCache(src);
+        }
+    }, [shouldShowImage, src]);
+
     return (
         <ImageContainer
             className={clsx(containerClassName, containerPropsClassName)}

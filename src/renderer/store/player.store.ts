@@ -7,6 +7,7 @@ import { createWithEqualityFn } from 'zustand/traditional';
 
 import { eventEmitter } from '/@/renderer/events/event-emitter';
 import { createSelectors } from '/@/renderer/lib/zustand';
+import { useAuthStore } from '/@/renderer/store/auth.store';
 import { useSettingsStore } from '/@/renderer/store/settings.store';
 import {
     setTimestamp as setTimestampStore,
@@ -906,6 +907,14 @@ export const usePlayerStoreBase = createWithEqualityFn<PlayerState>()(
                     };
                 },
                 mediaNext: () => {
+                    // Prevent track skipping during SSO re-authentication
+                    if (useAuthStore.getState().isSSOReauthInProgress) {
+                        console.warn(
+                            '[Player] Track skipping blocked during SSO re-authentication',
+                        );
+                        return;
+                    }
+
                     const state = get();
                     const currentIndex = state.player.index;
                     const player = state.player;
@@ -1032,6 +1041,14 @@ export const usePlayerStoreBase = createWithEqualityFn<PlayerState>()(
                     }
                 },
                 mediaPrevious: () => {
+                    // Prevent track skipping during SSO re-authentication
+                    if (useAuthStore.getState().isSSOReauthInProgress) {
+                        console.warn(
+                            '[Player] Track skipping blocked during SSO re-authentication',
+                        );
+                        return;
+                    }
+
                     const currentIndex = get().player.index;
                     const player = get().player;
                     const queue = get().getQueueOrder();
