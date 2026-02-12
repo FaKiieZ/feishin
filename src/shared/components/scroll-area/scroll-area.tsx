@@ -49,35 +49,56 @@ export const ScrollArea = forwardRef((props: ScrollAreaProps, ref: Ref<HTMLDivEl
         const { current: root } = containerRef;
 
         let autoScrollCleanup: (() => void) | null = null;
+        let frameId: number | null = null;
 
         if (scroller && root) {
             initialize({
-                elements: { viewport: scroller as HTMLElement },
                 target: root,
             });
 
-            if (allowDragScroll) {
-                autoScrollCleanup = autoScrollForElements({
-                    canScroll: (args) => {
-                        const data = args.source.data as unknown as DragData<unknown>;
-                        if (data.type === DragTarget.TABLE_COLUMN) return false;
-                        return true;
-                    },
-                    element: scroller as HTMLElement,
-                    getAllowedAxis: () => 'vertical',
-                    getConfiguration: () => ({ maxScrollSpeed: 'standard' }),
+            const instance = osInstance();
+
+            if (instance && allowDragScroll && (scrollX || scrollY)) {
+                // Wait for OverlayScrollbars to apply styles to the viewport
+                frameId = requestAnimationFrame(() => {
+                    const { viewport } = instance.elements();
+
+                    if (!viewport) return;
+
+                    const style = window.getComputedStyle(viewport);
+                    const isScrollableX =
+                        scrollX && (style.overflowX === 'scroll' || style.overflowX === 'auto');
+                    const isScrollableY =
+                        scrollY && (style.overflowY === 'scroll' || style.overflowY === 'auto');
+
+                    if (isScrollableX || isScrollableY) {
+                        autoScrollCleanup = autoScrollForElements({
+                            canScroll: (args) => {
+                                const data = args.source.data as unknown as DragData<unknown>;
+                                if (data.type === DragTarget.TABLE_COLUMN) return false;
+                                return true;
+                            },
+                            element: viewport as HTMLElement,
+                            getAllowedAxis: () => 'vertical',
+                            getConfiguration: () => ({ maxScrollSpeed: 'standard' }),
+                        });
+                    }
                 });
             }
         }
 
         return () => {
+            if (frameId) {
+                cancelAnimationFrame(frameId);
+            }
+
             if (autoScrollCleanup) {
                 autoScrollCleanup();
             }
 
             osInstance()?.destroy();
         };
-    }, [allowDragScroll, initialize, osInstance, scroller]);
+    }, [allowDragScroll, initialize, osInstance, scroller, scrollX, scrollY]);
 
     const mergedRef = useMergedRef(ref, containerRef);
 
