@@ -13,7 +13,7 @@ import { IPC_EVENTS, SSO_FLOW_IDS } from '/@/shared/constants';
 export const SSOReauthModal = () => {
     const { t } = useTranslation();
     const [opened, setOpened] = useState(false);
-    const [targetServerId, setTargetServerId] = useState<string | null>(null);
+    const [targetServerId, setTargetServerId] = useState<null | string>(null);
 
     const pollingRef = useRef<null | number>(null);
 
