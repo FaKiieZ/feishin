@@ -35,7 +35,6 @@ export interface ImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, 's
 
 interface ImageContainerProps extends HTMLAttributes<HTMLDivElement> {
     children: ReactNode;
-    enableAnimation?: boolean;
     isExplicit?: boolean;
 }
 
@@ -106,7 +105,6 @@ export function BaseImage({
     return (
         <ImageContainer
             className={clsx(containerClassName, containerPropsClassName)}
-            enableAnimation={enableAnimation}
             isExplicit={isExplicit}
             {...restContainerProps}
         >
@@ -193,7 +191,6 @@ function ImageWithDebounce({
         return (
             <ImageContainer
                 className={clsx(containerClassName, containerPropsClassName)}
-                enableAnimation={enableAnimation}
                 isExplicit={isExplicit}
                 ref={ref}
                 {...restContainerProps}
@@ -226,7 +223,6 @@ function ImageWithDebounce({
     return (
         <ImageContainer
             className={clsx(containerClassName, containerPropsClassName)}
-            enableAnimation={enableAnimation}
             isExplicit={isExplicit}
             {...restContainerProps}
         >
@@ -299,7 +295,6 @@ function ImageWithViewport({
     return (
         <ImageContainer
             className={clsx(containerClassName, containerPropsClassName)}
-            enableAnimation={enableAnimation}
             isExplicit={isExplicit}
             ref={ref}
             {...restContainerProps}
