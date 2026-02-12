@@ -19,7 +19,11 @@ export const authenticationFailure = (currentServer: null | ServerListItemWithCr
         if (currentServer.ssoEnabled) {
             // Set flag to prevent track skipping during re-authentication
             useAuthStore.getState().actions.setIsSSOReauthInProgress(true);
-            window.dispatchEvent(new CustomEvent('auth:sso-session-expired'));
+            window.dispatchEvent(
+                new CustomEvent('auth:sso-session-expired', {
+                    detail: { serverId: currentServer.id },
+                }),
+            );
             return;
         }
 
