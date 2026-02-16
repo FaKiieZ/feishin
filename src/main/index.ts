@@ -56,6 +56,12 @@ const ALPHA_UPDATER_CONFIG: {
     provider: 's3',
 };
 
+const GITHUB_UPDATER_CONFIG = {
+    owner: 'jeffvli',
+    provider: 'github' as const,
+    repo: 'feishin',
+};
+
 type UpdaterInstance = AppImageUpdater | MacUpdater | NsisUpdater | typeof autoUpdater;
 
 class AppUpdater {
@@ -98,6 +104,7 @@ async function checkAllChannelsAndGetBest(): Promise<{
     alphaUpdater.allowDowngrade = true;
 
     try {
+        console.log('Checking for updates on alpha channel');
         const alphaResult = await alphaUpdater.checkForUpdates();
         if (
             alphaResult?.updateInfo?.version &&
@@ -112,7 +119,9 @@ async function checkAllChannelsAndGetBest(): Promise<{
     }
 
     try {
+        autoUpdater.setFeedURL(GITHUB_UPDATER_CONFIG);
         configureAutoUpdaterForChannel('latest');
+        console.log('Checking for updates on latest channel (GitHub)');
         const latestResult = await autoUpdater.checkForUpdates();
         if (
             latestResult?.updateInfo?.version &&

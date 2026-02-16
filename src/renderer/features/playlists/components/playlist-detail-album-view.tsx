@@ -15,6 +15,7 @@ import { useListContext } from '/@/renderer/context/list-context';
 import { ContextMenuController } from '/@/renderer/features/context-menu/context-menu-controller';
 import { usePlayer } from '/@/renderer/features/player/context/player-context';
 import { usePlaylistSongListFilters } from '/@/renderer/features/playlists/hooks/use-playlist-song-list-filters';
+import { applyClientSideSongFilters } from '/@/renderer/features/playlists/hooks/use-playlist-track-list';
 import { type PlaylistAlbumRow, playlistSongsToAlbums } from '/@/renderer/features/playlists/utils';
 import { useSearchTermFilter } from '/@/renderer/features/shared/hooks/use-search-term-filter';
 import { searchLibraryItems } from '/@/renderer/features/shared/utils';
@@ -27,7 +28,13 @@ import {
     SongListSort,
     SortOrder,
 } from '/@/shared/types/domain-types';
-import { ItemListKey, ListDisplayType, ListPaginationType, Play } from '/@/shared/types/types';
+import {
+    ItemListKey,
+    ListDisplayType,
+    ListPaginationType,
+    Play,
+    TableColumn,
+} from '/@/shared/types/types';
 
 export const PlaylistDetailAlbumView = ({ data }: { data: PlaylistSongListResponse }) => {
     const player = usePlayer();
@@ -40,18 +47,25 @@ export const PlaylistDetailAlbumView = ({ data }: { data: PlaylistSongListRespon
     const { searchTerm } = useSearchTermFilter();
     const { query } = usePlaylistSongListFilters();
 
-    const sortedAlbums = useMemo(() => {
-        let songs = data?.items ?? [];
-        if (searchTerm?.trim()) {
-            songs = searchLibraryItems(songs, searchTerm, LibraryItem.SONG);
-        }
-        const sortedSongs = sortSongList(
-            songs,
+    const filteredAndSortedSongs = useMemo(() => {
+        const raw = data?.items ?? [];
+        const filtered = applyClientSideSongFilters(raw, query as Record<string, unknown>);
+
+        const searched = searchTerm?.trim()
+            ? searchLibraryItems(filtered, searchTerm, LibraryItem.SONG)
+            : filtered;
+
+        return sortSongList(
+            searched,
             (query.sortBy as SongListSort) ?? SongListSort.ID,
             (query.sortOrder as SortOrder) ?? SortOrder.ASC,
         );
-        return playlistSongsToAlbums(sortedSongs);
-    }, [data?.items, searchTerm, query.sortBy, query.sortOrder]);
+    }, [data?.items, query, searchTerm]);
+
+    const sortedAlbums = useMemo(
+        () => playlistSongsToAlbums(filteredAndSortedSongs),
+        [filteredAndSortedSongs],
+    );
 
     const isPaginated = pagination === ListPaginationType.PAGINATED;
     const totalAlbumCount = sortedAlbums.length;
@@ -67,6 +81,7 @@ export const PlaylistDetailAlbumView = ({ data }: { data: PlaylistSongListRespon
 
     const albumControlOverrides = useMemo<Partial<ItemControls>>(() => {
         return {
+            onFavorite: undefined,
             onMore: ({ event, internalState, item }: DefaultItemControlProps) => {
                 if (!event) return;
 
@@ -111,6 +126,7 @@ export const PlaylistDetailAlbumView = ({ data }: { data: PlaylistSongListRespon
                 }
                 player.addToQueueByFetch(item._serverId, [item.id], itemType, playType);
             },
+            onRating: undefined,
         };
     }, [player]);
 
@@ -119,8 +135,8 @@ export const PlaylistDetailAlbumView = ({ data }: { data: PlaylistSongListRespon
     }, [setItemCount, totalAlbumCount]);
 
     useEffect(() => {
-        setListData?.(data?.items ?? []);
-    }, [data?.items, setListData]);
+        setListData?.(filteredAndSortedSongs);
+    }, [filteredAndSortedSongs, setListData]);
 
     const { handleOnScrollEnd, scrollOffset } = useItemListScrollPersist({ enabled: true });
     const { handleColumnReordered } = useItemListColumnReorder({
@@ -138,6 +154,13 @@ export const PlaylistDetailAlbumView = ({ data }: { data: PlaylistSongListRespon
         tableKey: 'detail',
     });
     const rows = useGridRows(LibraryItem.ALBUM, ItemListKey.PLAYLIST_ALBUM, grid.size);
+
+    const tableColumns = useMemo(() => {
+        return table.columns.filter(
+            (column) =>
+                column.id !== TableColumn.USER_FAVORITE && column.id !== TableColumn.USER_RATING,
+        );
+    }, [table.columns]);
 
     const renderAlbumList = () => {
         switch (display) {
@@ -185,7 +208,7 @@ export const PlaylistDetailAlbumView = ({ data }: { data: PlaylistSongListRespon
                     <ItemTableList
                         autoFitColumns={table.autoFitColumns}
                         CellComponent={ItemTableListColumn}
-                        columns={table.columns}
+                        columns={tableColumns}
                         data={albumsToRender}
                         enableAlternateRowColors={table.enableAlternateRowColors}
                         enableHeader={table.enableHeader}

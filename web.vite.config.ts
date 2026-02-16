@@ -5,7 +5,7 @@ import { ViteEjsPlugin } from 'vite-plugin-ejs';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
-    base: '/',
+    base: './',
     build: {
         emptyOutDir: true,
         outDir: path.resolve(__dirname, './out/web'),
@@ -22,6 +22,27 @@ export default defineConfig({
                 preview_full_screen_player: normalizePath(
                     path.resolve(__dirname, './media/preview_full_screen_player.webp'),
                 ),
+            },
+            output: {
+                assetFileNames: (assetInfo) => {
+                    const stableNames = [
+                        '32x32',
+                        '64x64',
+                        '128x128',
+                        '256x256',
+                        '512x512',
+                        '1024x1024',
+                        'favicon',
+                        'preview_full_screen_player',
+                    ];
+
+                    if (assetInfo.name && stableNames.includes(assetInfo.name)) {
+                        return 'assets/[name][extname]';
+                    }
+
+                    return 'assets/[name]-[hash][extname]';
+                },
+                sourcemapExcludeSources: false,
             },
         },
         sourcemap: true,
@@ -52,7 +73,7 @@ export default defineConfig({
                 // The PWA will not be shown during development
                 enabled: false,
             },
-            filename: 'sw.js',
+            filename: 'assets/sw.js',
             injectRegister: 'inline',
             manifest: {
                 background_color: '#FFDCB5',
@@ -108,7 +129,7 @@ export default defineConfig({
             manifestFilename: 'assets/manifest.webmanifest',
             outDir: path.resolve(__dirname, './out/web/'),
             registerType: 'autoUpdate',
-            scope: '/',
+            scope: '/assets/',
             workbox: {
                 cleanupOutdatedCaches: true,
                 clientsClaim: true,
