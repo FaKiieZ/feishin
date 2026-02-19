@@ -204,6 +204,7 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
                     username: values.username,
                 },
                 values.type as ServerType,
+                values.ssoEnabled,
             );
 
             if (!data) {

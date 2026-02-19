@@ -117,10 +117,14 @@ export const JellyfinController: InternalControllerEndpoint = {
 
         return null;
     },
-    authenticate: async (url, body) => {
+    authenticate: async (url, body, ssoEnabled) => {
         const cleanServerUrl = url.replace(/\/$/, '');
 
-        const res = await jfApiClient({ server: null, url: cleanServerUrl }).authenticate({
+        const res = await jfApiClient({
+            server: null,
+            ssoEnabled,
+            url: cleanServerUrl,
+        }).authenticate({
             body: {
                 Pw: body.password,
                 Username: body.username,

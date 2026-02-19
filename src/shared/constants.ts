@@ -2,6 +2,7 @@ export const IPC_EVENTS = {
     AUTH_CLOSE_SSO: 'auth:close-sso',
     AUTH_OPEN_SSO: 'auth:open-sso',
     AUTH_SSO_CLOSED: 'auth:sso-closed',
+    AUTH_SSO_REAUTH_SUCCESS: 'auth:sso-reauth-success',
     AUTH_SSO_SESSION_EXPIRED: 'auth:sso-session-expired',
 };
 

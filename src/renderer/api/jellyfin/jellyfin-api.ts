@@ -408,9 +408,10 @@ export const createAuthHeader = (): string => {
 export const jfApiClient = (args: {
     server: null | ServerListItemWithCredential;
     signal?: AbortSignal;
+    ssoEnabled?: boolean;
     url?: string;
 }) => {
-    const { server, signal, url } = args;
+    const { server, signal, ssoEnabled, url } = args;
 
     return initClient(contract, {
         api: async ({ body, headers, method, path }) => {
@@ -440,7 +441,7 @@ export const jfApiClient = (args: {
                     params,
                     signal,
                     url: `${baseUrl}/${api}`,
-                    withCredentials: server?.ssoEnabled,
+                    withCredentials: server?.ssoEnabled || ssoEnabled,
                 });
                 return {
                     body: result.data,

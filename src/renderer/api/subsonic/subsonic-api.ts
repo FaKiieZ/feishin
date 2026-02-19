@@ -409,9 +409,10 @@ export const ssApiClient = (args: {
     server: null | ServerListItemWithCredential;
     signal?: AbortSignal;
     silent?: boolean;
+    ssoEnabled?: boolean;
     url?: string;
 }) => {
-    const { server, signal, silent, url } = args;
+    const { server, signal, silent, ssoEnabled, url } = args;
 
     return initClient(contract, {
         api: async ({ headers, method, path }) => {
@@ -443,7 +444,7 @@ export const ssApiClient = (args: {
                 // In cases where we have a fallback, don't notify the error
                 transformResponse: silent ? silentlyTransformResponse : undefined,
                 url: `${baseUrl}/${api}`,
-                withCredentials: server?.ssoEnabled,
+                withCredentials: server?.ssoEnabled || ssoEnabled,
             };
 
             const data = {
@@ -470,7 +471,7 @@ export const ssApiClient = (args: {
                     );
 
                 if (!result.data?.[API_RESPONSE_KEYS.SUBSONIC_RESPONSE]) {
-                    if (server?.ssoEnabled && !silent) {
+                    if ((server?.ssoEnabled || ssoEnabled) && !silent) {
                         authenticationFailure(server);
                     }
                     throw new Error('Invalid Subsonic response');

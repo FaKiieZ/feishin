@@ -123,10 +123,14 @@ export const NavidromeController: InternalControllerEndpoint = {
 
         return null;
     },
-    authenticate: async (url, body): Promise<AuthenticationResponse> => {
+    authenticate: async (url, body, ssoEnabled): Promise<AuthenticationResponse> => {
         const cleanServerUrl = url.replace(/\/$/, '');
 
-        const res = await ndApiClient({ server: null, url: cleanServerUrl }).authenticate({
+        const res = await ndApiClient({
+            server: null,
+            ssoEnabled,
+            url: cleanServerUrl,
+        }).authenticate({
             body: {
                 password: body.password,
                 username: body.username,

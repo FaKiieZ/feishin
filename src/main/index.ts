@@ -15,6 +15,7 @@ import {
     protocol,
     Rectangle,
     screen,
+    session,
     shell,
     Tray,
 } from 'electron';
@@ -892,6 +893,28 @@ if (!singleInstance) {
                 }
 
                 return response;
+            });
+
+            // TODO: Test if this can be removed
+            session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+                const { responseHeaders } = details;
+                const ignoreCors = store.get('ignore_cors');
+
+                if (ignoreCors && responseHeaders) {
+                    const origin =
+                        details.requestHeaders?.Origin || details.requestHeaders?.origin || '*';
+
+                    responseHeaders['Access-Control-Allow-Origin'] = [origin];
+                    responseHeaders['Access-Control-Allow-Credentials'] = ['true'];
+                    responseHeaders['Access-Control-Allow-Methods'] = [
+                        'GET, POST, PUT, DELETE, OPTIONS',
+                    ];
+                    responseHeaders['Access-Control-Allow-Headers'] = [
+                        'Content-Type, Authorization, x-nd-authorization, x-subsonic-token, x-subsonic-salt',
+                    ];
+                }
+
+                callback({ responseHeaders });
             });
 
             createWindow();

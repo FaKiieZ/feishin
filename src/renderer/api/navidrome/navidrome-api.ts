@@ -417,9 +417,10 @@ axiosClient.interceptors.response.use(
 export const ndApiClient = (args: {
     server: null | ServerListItemWithCredential;
     signal?: AbortSignal;
+    ssoEnabled?: boolean;
     url?: string;
 }) => {
-    const { server, signal, url } = args;
+    const { server, signal, ssoEnabled, url } = args;
 
     return initClient(contract, {
         api: async ({ body, headers, method, path }) => {
@@ -449,12 +450,12 @@ export const ndApiClient = (args: {
                     params,
                     signal,
                     url: `${baseUrl}/${api}`,
-                    withCredentials: server?.ssoEnabled,
+                    withCredentials: server?.ssoEnabled || ssoEnabled,
                 });
 
                 // Check for invalid response (e.g. HTML login page from SSO proxy returning 200 OK)
                 if (typeof result.data === 'string') {
-                    if (server?.ssoEnabled) {
+                    if (server?.ssoEnabled || ssoEnabled) {
                         authenticationFailure(server);
                     }
                     throw new Error('Invalid Navidrome response (String/HTML received)');

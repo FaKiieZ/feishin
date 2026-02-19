@@ -1,4 +1,5 @@
 import { Modal } from '@mantine/core';
+import { useQueryClient } from '@tanstack/react-query';
 import isElectron from 'is-electron';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +24,8 @@ export const SSOReauthModal = () => {
             pollingRef.current = null;
         }
     }, []);
+
+    const queryClient = useQueryClient();
 
     const handleLogin = useCallback(() => {
         const state = useAuthStore.getState();
@@ -53,8 +56,8 @@ export const SSOReauthModal = () => {
                     });
 
                     if (userInfo) {
-                        // Success! Close SSO window and reload
-                        // Explicitly set the current server again to ensure it is persisted and selected on reload
+                        // Success! Close SSO window
+                        // Explicitly set the current server again to ensure it is persisted and selected
                         useAuthStore.getState().actions.setCurrentServer(server);
                         // Clear the re-auth flag to allow track skipping again
                         useAuthStore.getState().actions.setIsSSOReauthInProgress(false);
@@ -62,7 +65,11 @@ export const SSOReauthModal = () => {
                         (window.api as any).ipc.send(IPC_EVENTS.AUTH_CLOSE_SSO);
                         stopPolling();
                         setOpened(false);
-                        window.location.reload();
+
+                        // Trigger re-authentication check in useServerAuthenticated hook
+                        window.dispatchEvent(new CustomEvent('auth:reauthenticate'));
+                        // Invalidate all queries to refresh data
+                        queryClient.invalidateQueries();
                     }
                 } catch {
                     // Ignore errors (401, network, etc) while polling
@@ -72,7 +79,7 @@ export const SSOReauthModal = () => {
             // Web fallback: open in new tab
             window.open(url_to_open, '_blank');
         }
-    }, [stopPolling, targetServerId]);
+    }, [stopPolling, targetServerId, queryClient]);
 
     useEffect(() => {
         const handleSSOSessionExpired = (event: Event) => {
@@ -89,7 +96,9 @@ export const SSOReauthModal = () => {
             stopPolling();
             // Clear the re-auth flag when window is closed
             useAuthStore.getState().actions.setIsSSOReauthInProgress(false);
-            window.location.reload();
+            // Trigger re-authentication check and refresh UI
+            window.dispatchEvent(new CustomEvent('auth:reauthenticate'));
+            queryClient.invalidateQueries();
         };
 
         window.addEventListener(IPC_EVENTS.AUTH_SSO_SESSION_EXPIRED, handleSSOSessionExpired);
@@ -107,7 +116,7 @@ export const SSOReauthModal = () => {
                 window.api.ipc.off(IPC_EVENTS.AUTH_SSO_CLOSED, handleSSOClosed);
             }
         };
-    }, [stopPolling]);
+    }, [stopPolling, queryClient]);
 
     // Clean up on unmount or close
     useEffect(() => {

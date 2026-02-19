@@ -86,6 +86,7 @@ export const useServerAuthenticated = () => {
     const [ready, setReady] = useState(AuthState.LOADING);
     const navigate = useNavigate();
     const retryCountRef = useRef<number>(0);
+    const [reauthTrigger, setReauthTrigger] = useState(0);
 
     const { setCurrentServer, updateServer } = useAuthStoreActions();
 
@@ -261,7 +262,11 @@ export const useServerAuthenticated = () => {
                             },
                         });
 
-                        window.dispatchEvent(new CustomEvent('auth:sso-session-expired'));
+                        window.dispatchEvent(
+                            new CustomEvent('auth:sso-session-expired', {
+                                detail: { serverId: serverWithAuth.id },
+                            }),
+                        );
                         return;
                     }
 
@@ -345,12 +350,24 @@ export const useServerAuthenticated = () => {
         [updateServer, setCurrentServer, navigate],
     );
 
-    const debouncedAuth = debounce(
-        (serverWithAuth: NonNullable<ReturnType<typeof getServerById>>) => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const debouncedAuth = useCallback(
+        debounce((serverWithAuth: NonNullable<ReturnType<typeof getServerById>>) => {
             authenticateServer(serverWithAuth).catch(console.error);
-        },
-        300,
+        }, 300),
+        [authenticateServer],
     );
+
+    useEffect(() => {
+        const handleReauth = () => {
+            setReauthTrigger((prev) => prev + 1);
+        };
+
+        window.addEventListener('auth:reauthenticate', handleReauth);
+        return () => {
+            window.removeEventListener('auth:reauthenticate', handleReauth);
+        };
+    }, []);
 
     useEffect(() => {
         if (!server) {
@@ -364,10 +381,15 @@ export const useServerAuthenticated = () => {
             return;
         }
 
-        if (priorServerId.current !== server.id) {
+        const isNewServer = priorServerId.current !== server.id;
+
+        if (isNewServer || reauthTrigger > 0) {
             const serverWithAuth = getServerById(server.id);
             priorServerId.current = server.id;
-            retryCountRef.current = 0; // Reset retry count when server changes
+
+            if (isNewServer) {
+                retryCountRef.current = 0; // Reset retry count when server changes
+            }
 
             if (!serverWithAuth) {
                 logFn.error(logMsg[LogCategory.SYSTEM].serverAuthenticationError, {
@@ -384,7 +406,7 @@ export const useServerAuthenticated = () => {
             setReady(AuthState.LOADING);
             debouncedAuth(serverWithAuth);
         }
-    }, [debouncedAuth, server]);
+    }, [debouncedAuth, server, reauthTrigger]);
 
     return ready;
 };
