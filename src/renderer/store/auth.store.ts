@@ -183,6 +183,7 @@ export const useCurrentServer = () =>
 
         return {
             customHeaders: state.currentServer?.customHeaders,
+            enableAudiobooks: state.currentServer?.enableAudiobooks,
             features: state.currentServer?.features,
             id: state.currentServer?.id,
             isAdmin: state.currentServer?.isAdmin,
