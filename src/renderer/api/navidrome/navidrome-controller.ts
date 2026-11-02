@@ -3,7 +3,6 @@ import { set } from 'idb-keyval';
 import orderBy from 'lodash/orderBy';
 
 import { ndApiClient } from '/@/renderer/api/navidrome/navidrome-api';
-import { mergeDesktopHeaders } from '/@/renderer/api/server-headers';
 import { ssApiClient } from '/@/renderer/api/subsonic/subsonic-api';
 import { SubsonicController } from '/@/renderer/api/subsonic/subsonic-controller';
 import { ndNormalize } from '/@/shared/api/navidrome/navidrome-normalize';
@@ -141,7 +140,7 @@ export const NavidromeController: InternalControllerEndpoint = {
 
         return null;
     },
-    authenticate: async (url, body, customHeaders) => {
+    authenticate: async (url, body) => {
         if (body.action && body.action !== 'password') {
             throw new Error('Navidrome does not support this authentication method');
         }
@@ -152,11 +151,7 @@ export const NavidromeController: InternalControllerEndpoint = {
 
         const cleanServerUrl = url.replace(/\/$/, '');
 
-        const res = await ndApiClient({
-            customHeaders,
-            server: null,
-            url: cleanServerUrl,
-        }).authenticate({
+        const res = await ndApiClient({ server: null, url: cleanServerUrl }).authenticate({
             body: {
                 password: body.password,
                 username: body.username,
@@ -1314,12 +1309,12 @@ export const NavidromeController: InternalControllerEndpoint = {
         form.append('image', fileLike as any);
 
         const res = await axios.post(`${serverUrl}/api/artist/${query.id}/image`, form, {
-            headers: mergeDesktopHeaders(server?.customHeaders, {
+            headers: {
                 'Content-Type': 'multipart/form-data',
                 ...(server?.ndCredential && {
                     'x-nd-authorization': `Bearer ${server.ndCredential}`,
                 }),
-            }),
+            },
             signal: apiClientProps.signal,
         });
 
@@ -1350,12 +1345,12 @@ export const NavidromeController: InternalControllerEndpoint = {
         form.append('image', fileLike as any);
 
         const res = await axios.post(`${serverUrl}/api/radio/${query.id}/image`, form, {
-            headers: mergeDesktopHeaders(server?.customHeaders, {
+            headers: {
                 'Content-Type': 'multipart/form-data',
                 ...(server?.ndCredential && {
                     'x-nd-authorization': `Bearer ${server.ndCredential}`,
                 }),
-            }),
+            },
             signal: apiClientProps.signal,
         });
 
@@ -1386,12 +1381,12 @@ export const NavidromeController: InternalControllerEndpoint = {
         form.append('image', fileLike as any);
 
         const res = await axios.post(`${serverUrl}/api/playlist/${query.id}/image`, form, {
-            headers: mergeDesktopHeaders(server?.customHeaders, {
+            headers: {
                 'Content-Type': 'multipart/form-data',
                 ...(server?.ndCredential && {
                     'x-nd-authorization': `Bearer ${server.ndCredential}`,
                 }),
-            }),
+            },
             signal: apiClientProps.signal,
         });
 

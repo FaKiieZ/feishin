@@ -6,10 +6,6 @@ export type CustomHeaderEntry = {
     value: string;
 };
 
-export const isCustomHeaderKeyValid = (key: string): boolean => {
-    return HEADER_NAME_PATTERN.test(key.trim());
-};
-
 export const normalizeCustomHeaders = (
     entries: CustomHeaderEntry[] | Record<string, string> | undefined,
 ): Record<string, string> => {
@@ -28,14 +24,6 @@ export const normalizeCustomHeaders = (
 
     return { ...entries };
 };
-
-export const mergeCustomHeaders = (
-    customHeaders: Record<string, string> | undefined,
-    requiredHeaders: Record<string, string> = {},
-): Record<string, string> => ({
-    ...normalizeCustomHeaders(customHeaders),
-    ...requiredHeaders,
-});
 
 export const areCustomHeadersEqual = (
     a?: Record<string, string>,

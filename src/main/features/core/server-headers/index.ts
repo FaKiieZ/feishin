@@ -1,5 +1,6 @@
 import { app, ipcMain, session } from 'electron';
 
+import { getMainWindow } from '/@/main/index';
 import log from '/@/main/logger';
 
 export type ServerHeaderRule = {
@@ -7,7 +8,14 @@ export type ServerHeaderRule = {
     headers: Record<string, string>;
 };
 
-let serverHeaderRules: { baseUrl: string; headers: Record<string, string> }[] = [];
+let serverHeaderRules: ServerHeaderRule[] = [];
+// Rules for servers that are not saved yet (e.g. while adding a server). They take
+// precedence over saved rules so edited headers are used for re-authentication.
+let pendingHeaderRules: ServerHeaderRule[] = [];
+
+// Headers Feishin itself uses to authenticate against the server. A custom header must
+// never replace them, otherwise the server login breaks (e.g. Jellyfin's Authorization).
+const PROTECTED_HEADERS = new Set(['authorization', 'x-emby-authorization', 'x-nd-authorization']);
 let interceptorRegistered = false;
 
 const normalizeBaseUrl = (url: string) => {
@@ -20,17 +28,20 @@ const normalizeBaseUrl = (url: string) => {
     }
 };
 
-export const setServerHeaderRules = (rules: ServerHeaderRule[]) => {
-    serverHeaderRules = (rules || [])
+const normalizeRules = (rules: ServerHeaderRule[]) =>
+    (Array.isArray(rules) ? rules : [])
         .map((rule) => ({
             baseUrl: normalizeBaseUrl(rule.baseUrl),
             headers: rule.headers || {},
         }))
         .filter((rule) => rule.baseUrl && Object.keys(rule.headers).length > 0);
+
+export const setServerHeaderRules = (rules: ServerHeaderRule[]) => {
+    serverHeaderRules = normalizeRules(rules);
 };
 
 export const findMatchingRule = (urlStr: string) => {
-    for (const rule of serverHeaderRules) {
+    for (const rule of [...pendingHeaderRules, ...serverHeaderRules]) {
         if (
             urlStr === rule.baseUrl ||
             urlStr.startsWith(`${rule.baseUrl}/`) ||
@@ -48,14 +59,27 @@ const registerNetworkInterceptor = () => {
 
     session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
         try {
-            const rule = findMatchingRule(details.url);
+            // Only requests made by the app itself, never by other windows
+            const mainWindow = getMainWindow();
+            const isFromMainWindow =
+                !!mainWindow &&
+                !mainWindow.isDestroyed() &&
+                details.webContentsId === mainWindow.webContents.id;
+
+            const rule = isFromMainWindow ? findMatchingRule(details.url) : null;
             if (rule) {
                 for (const [customKey, customValue] of Object.entries(rule.headers)) {
                     const lowerKey = customKey.toLowerCase();
-                    for (const existingKey of Object.keys(details.requestHeaders)) {
-                        if (existingKey.toLowerCase() === lowerKey) {
-                            delete details.requestHeaders[existingKey];
-                        }
+                    const existingKeys = Object.keys(details.requestHeaders).filter(
+                        (existingKey) => existingKey.toLowerCase() === lowerKey,
+                    );
+
+                    if (PROTECTED_HEADERS.has(lowerKey) && existingKeys.length > 0) {
+                        continue;
+                    }
+
+                    for (const existingKey of existingKeys) {
+                        delete details.requestHeaders[existingKey];
                     }
                     details.requestHeaders[customKey] = customValue;
                 }
@@ -70,6 +94,10 @@ const registerNetworkInterceptor = () => {
 
 ipcMain.handle('server-headers-sync', (_event, rules: ServerHeaderRule[]) => {
     setServerHeaderRules(rules);
+});
+
+ipcMain.handle('server-headers-set-pending', (_event, rules: ServerHeaderRule[]) => {
+    pendingHeaderRules = normalizeRules(rules);
 });
 
 ipcMain.handle('session-clear-server-cookies', async (_event, serverUrl: string) => {

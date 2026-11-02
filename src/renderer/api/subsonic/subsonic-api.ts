@@ -5,7 +5,6 @@ import { z } from 'zod';
 
 import i18n from '/@/i18n/i18n';
 import { validateResponse } from '/@/renderer/api/response-validation';
-import { mergeDesktopHeaders } from '/@/renderer/api/server-headers';
 import { authenticationFailure } from '/@/renderer/api/utils';
 import { useAuthStore } from '/@/renderer/store';
 import { getServerUrl } from '/@/renderer/utils/normalize-server-url';
@@ -478,14 +477,13 @@ const silentlyTransformResponse = (data: any) => {
 };
 
 export const ssApiClient = (args: {
-    customHeaders?: Record<string, string>;
     forceRemoteUrl?: boolean;
     server: null | ServerListItemWithCredential;
     signal?: AbortSignal;
     silent?: boolean;
     url?: string;
 }) => {
-    const { customHeaders, forceRemoteUrl, server, signal, silent, url } = args;
+    const { forceRemoteUrl, server, signal, silent, url } = args;
 
     return initClient(contract, {
         api: async ({ body, headers, method, path, rawQuery, route }) => {
@@ -516,7 +514,7 @@ export const ssApiClient = (args: {
             }
 
             const request: AxiosRequestConfig = {
-                headers: mergeDesktopHeaders(server?.customHeaders ?? customHeaders, headers),
+                headers,
                 signal,
                 // In cases where we have a fallback, don't notify the error
                 transformResponse: silent ? silentlyTransformResponse : undefined,
@@ -529,7 +527,7 @@ export const ssApiClient = (args: {
             if (isGetTranscodeDecisionPost && body != null) {
                 request.method = 'POST';
                 request.headers = {
-                    ...request.headers,
+                    ...headers,
                     'Content-Type': 'application/json',
                 };
                 request.data = body;
@@ -543,10 +541,7 @@ export const ssApiClient = (args: {
                         : {}),
                 };
             } else if (hasFeature(server, ServerFeature.OS_FORM_POST)) {
-                request.headers = {
-                    ...request.headers,
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                };
+                headers['Content-Type'] = 'application/x-www-form-urlencoded';
                 request.method = 'POST';
                 const data = {
                     c: 'Feishin',

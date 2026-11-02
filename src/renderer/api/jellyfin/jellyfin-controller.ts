@@ -6,7 +6,6 @@ import orderBy from 'lodash/orderBy';
 import { z } from 'zod';
 
 import { createAuthHeader, jfApiClient } from '/@/renderer/api/jellyfin/jellyfin-api';
-import { mergeDesktopHeaders } from '/@/renderer/api/server-headers';
 import { useRadioStore } from '/@/renderer/features/radio/store/radio-store';
 import { isShuffleEnabled, usePlayerStoreBase } from '/@/renderer/store/player.store';
 import { getServerUrl, normalizeServerUrl } from '/@/renderer/utils/normalize-server-url';
@@ -91,11 +90,9 @@ const getJellyfinImageRequest = ({
 
     return {
         cacheKey: ['jellyfin', server.id, baseUrl || '', id, imageSize || ''].join(':'),
-        headers: mergeDesktopHeaders(server?.customHeaders, {
-            Authorization: server.credential
-                ? createAuthHeader().concat(`, Token="${server.credential}"`)
-                : createAuthHeader(),
-        }),
+        headers: server.credential
+            ? { Authorization: createAuthHeader().concat(`, Token="${server.credential}"`) }
+            : { Authorization: createAuthHeader() },
         url: `${url}/Items/${id}/Images/Primary?quality=96${imageSize ? `&width=${imageSize}` : ''}`,
     };
 };
@@ -178,10 +175,10 @@ const uploadItemPrimaryImage = async (
         : authHeader;
 
     const res = await axios.post(`${serverUrl}/Items/${id}/Images/Primary`, base64, {
-        headers: mergeDesktopHeaders(server?.customHeaders, {
+        headers: {
             Authorization: authorization,
             'Content-Type': contentType,
-        }),
+        },
         signal: apiClientProps.signal,
     });
 
@@ -284,14 +281,13 @@ export const JellyfinController: InternalControllerEndpoint = {
 
         return null;
     },
-    authenticate: async (url, body, customHeaders) => {
+    authenticate: async (url, body) => {
         const normalizedUrl = normalizeServerUrl(url);
 
         switch (body.action) {
             case 'isQuickConnectEnabled': {
                 try {
                     const res = await jfApiClient({
-                        customHeaders,
                         server: null,
                         url: normalizedUrl,
                     }).quickConnectEnabled();
@@ -308,11 +304,7 @@ export const JellyfinController: InternalControllerEndpoint = {
                     );
                 }
 
-                const res = await jfApiClient({
-                    customHeaders,
-                    server: null,
-                    url: normalizedUrl,
-                }).authenticate({
+                const res = await jfApiClient({ server: null, url: normalizedUrl }).authenticate({
                     body: {
                         Pw: body.password,
                         Username: body.username,
@@ -336,7 +328,6 @@ export const JellyfinController: InternalControllerEndpoint = {
                 }
 
                 const res = await jfApiClient({
-                    customHeaders,
                     server: null,
                     url: normalizedUrl,
                 }).quickConnectAuthenticate({
@@ -356,7 +347,6 @@ export const JellyfinController: InternalControllerEndpoint = {
             }
             case 'quickConnectInitiate': {
                 const res = await jfApiClient({
-                    customHeaders,
                     server: null,
                     url: normalizedUrl,
                 }).quickConnectInitiate({
@@ -375,7 +365,6 @@ export const JellyfinController: InternalControllerEndpoint = {
                 }
 
                 const res = await jfApiClient({
-                    customHeaders,
                     server: null,
                     url: normalizedUrl,
                 }).quickConnectState({

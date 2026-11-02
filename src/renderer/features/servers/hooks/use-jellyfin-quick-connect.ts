@@ -6,7 +6,6 @@ import { toast } from '/@/shared/components/toast/toast';
 import { AuthenticationResponse, ServerType } from '/@/shared/types/domain-types';
 
 interface UseJellyfinQuickConnectProps {
-    customHeaders?: Record<string, string>;
     onAuthenticated: (data: AuthenticationResponse) => Promise<void> | void;
 }
 
@@ -18,10 +17,7 @@ interface UseJellyfinQuickConnectProps {
  * succeeds (`onAuthenticated`), since that differs between the login route
  * and the add server form.
  */
-export function useJellyfinQuickConnect({
-    customHeaders,
-    onAuthenticated,
-}: UseJellyfinQuickConnectProps) {
+export function useJellyfinQuickConnect({ onAuthenticated }: UseJellyfinQuickConnectProps) {
     const { t } = useTranslation();
     const [code, setCode] = useState<null | string>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -55,7 +51,6 @@ export function useJellyfinQuickConnect({
                     url,
                     { action: 'quickConnectInitiate' },
                     ServerType.JELLYFIN,
-                    customHeaders,
                 );
             } catch (err: any) {
                 setIsLoading(false);
@@ -74,7 +69,6 @@ export function useJellyfinQuickConnect({
                         url,
                         { action: 'quickConnectState', secret: result.secret },
                         ServerType.JELLYFIN,
-                        customHeaders,
                     );
                     if (!authenticated) return;
 
@@ -84,7 +78,6 @@ export function useJellyfinQuickConnect({
                         url,
                         { action: 'quickConnectAuthenticate', secret: result.secret },
                         ServerType.JELLYFIN,
-                        customHeaders,
                     );
                     if (!data) {
                         toast.error({ message: t('error.authenticationFailed') });
@@ -100,7 +93,7 @@ export function useJellyfinQuickConnect({
                 }
             }, 5000);
         },
-        [customHeaders, onAuthenticated, stop, t],
+        [onAuthenticated, stop, t],
     );
 
     return { code, isLoading, start, stop };

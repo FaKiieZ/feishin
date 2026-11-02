@@ -7,6 +7,7 @@ import { shallow } from 'zustand/shallow';
 import { createWithEqualityFn } from 'zustand/traditional';
 
 import { ServerListItem, ServerListItemWithCredential } from '/@/shared/types/domain-types';
+import { areCustomHeadersEqual } from '/@/shared/utils/server-headers';
 
 export interface AuthSlice extends AuthState {
     actions: {
@@ -115,7 +116,8 @@ export const useAuthStore = createWithEqualityFn<AuthSlice>()(
                             isElectron() &&
                             window.api?.serverHeaders &&
                             existingServer &&
-                            args.customHeaders !== undefined
+                            args.customHeaders !== undefined &&
+                            !areCustomHeadersEqual(existingServer.customHeaders, args.customHeaders)
                         ) {
                             if (existingServer.url) {
                                 window.api.serverHeaders

@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '/@/renderer/api';
+import { setPendingServerHeaders } from '/@/renderer/api/server-headers';
 import {
     isLegacyAuth,
     isServerLock,
@@ -149,7 +150,6 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
         start: startQuickConnect,
         stop: stopQuickConnect,
     } = useJellyfinQuickConnect({
-        customHeaders: normalizeCustomHeaders(form.values.customHeaders),
         onAuthenticated: (data) => {
             const url = form.values.url;
             const serverItem: ServerListItemWithCredential = {
@@ -191,6 +191,13 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
         if (!showQuickConnect) stopQuickConnect();
     }, [showQuickConnect, stopQuickConnect]);
 
+    // Clear the temporary headers of the unsaved server when the form closes
+    useEffect(() => {
+        return () => {
+            setPendingServerHeaders();
+        };
+    }, []);
+
     const fillServerDetails = (server: DiscoveredServerItem) => {
         form.setValues({ ...server });
     };
@@ -229,6 +236,7 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
 
         try {
             setIsLoading(true);
+            await setPendingServerHeaders(values.url, normalizedCustomHeaders);
             const data: AuthenticationResponse | undefined = await authFunction(
                 values.url,
                 {
@@ -237,7 +245,6 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
                     username: values.username,
                 },
                 values.type as ServerType,
-                normalizedCustomHeaders,
             );
 
             if (!data) {
@@ -479,7 +486,13 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
                             code={quickConnectCode}
                             disabled={!form.values.name || !form.values.url}
                             isLoading={isQuickConnectLoading}
-                            onStart={() => startQuickConnect(form.values.url)}
+                            onStart={async () => {
+                                await setPendingServerHeaders(
+                                    form.values.url,
+                                    normalizeCustomHeaders(form.values.customHeaders),
+                                );
+                                startQuickConnect(form.values.url);
+                            }}
                             onStop={stopQuickConnect}
                             url={form.values.url}
                         />

@@ -7,7 +7,6 @@ import qs from 'qs';
 
 import i18n from '/@/i18n/i18n';
 import { validateResponse } from '/@/renderer/api/response-validation';
-import { mergeDesktopHeaders } from '/@/renderer/api/server-headers';
 import { authenticationFailure } from '/@/renderer/api/utils';
 import { useAuthStore } from '/@/renderer/store';
 import { logger } from '/@/renderer/utils/logger';
@@ -401,16 +400,10 @@ axiosClient.interceptors.response.use(
                         shouldDelay = true;
 
                         // Do not use axiosClient. Instead, manually make a post
-                        const res = await axios.post(
-                            `${currentServer.url}/auth/login`,
-                            {
-                                password,
-                                username: currentServer.username,
-                            },
-                            {
-                                headers: mergeDesktopHeaders(currentServer.customHeaders),
-                            },
-                        );
+                        const res = await axios.post(`${currentServer.url}/auth/login`, {
+                            password,
+                            username: currentServer.username,
+                        });
 
                         if (res.status === 429) {
                             toast.error({
@@ -480,13 +473,12 @@ axiosClient.interceptors.response.use(
 );
 
 export const ndApiClient = (args: {
-    customHeaders?: Record<string, string>;
     forceRemoteUrl?: boolean;
     server: null | ServerListItemWithCredential;
     signal?: AbortSignal;
     url?: string;
 }) => {
-    const { customHeaders, forceRemoteUrl, server, signal, url } = args;
+    const { forceRemoteUrl, server, signal, url } = args;
 
     return initClient(contract, {
         api: async ({ body, headers, method, path, route }) => {
@@ -508,10 +500,10 @@ export const ndApiClient = (args: {
 
                 const result = await axiosClient.request({
                     data: body,
-                    headers: mergeDesktopHeaders(server?.customHeaders ?? customHeaders, {
+                    headers: {
                         ...headers,
                         ...(token && { 'x-nd-authorization': `Bearer ${token}` }),
-                    }),
+                    },
                     method: method as Method,
                     params,
                     signal,

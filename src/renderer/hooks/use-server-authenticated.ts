@@ -175,7 +175,6 @@ export const useServerAuthenticated = () => {
                                     username: serverWithAuth.username,
                                 },
                                 serverWithAuth.type,
-                                serverWithAuth.customHeaders,
                             );
 
                             if (!authData) {
